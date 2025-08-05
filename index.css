@@ -107,24 +107,35 @@
  }
 
  #modal-content {
-     margin: 10% auto;
+     position: relative;
+     margin: 5% auto;
      padding: 20px;
      background-color: white;
      max-width: 90%;
+     max-height: 90vh;
      text-align: center;
      border-radius: 10px;
+     overflow: auto;
  }
 
  #modal-img {
      max-width: 100%;
      max-height: 70vh;
+     display: block;
+     margin: 0 auto;
  }
 
  #modal-close {
-     margin-top: 10px;
-     cursor: pointer;
-     color: red;
+     display: inline-block;
+     margin-top: 15px;
+     padding: 10px 20px;
+     background: #eee;
+     border-radius: 5px;
      font-weight: bold;
+     cursor: pointer;
+     color: #f00;
+     position: static;
+     /* ← これでモーダル外に出ないチュー */
  }
 
  #searchInput {
