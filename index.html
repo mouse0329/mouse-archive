@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>ネズミアーカイブ</title>
+    <link rel="stylesheet" href="index.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="ネズミの画像を集めたアーカイブです。クリックで拡大表示できます。" />
+    <meta name="keywords" content="ネズミ, 画像, アーカイブ, マウス, ネズミ画像" />
+    <meta name="author" content="mouse0329" />
+    <meta property="og:title" content="ネズミアーカイブ" />
+    <meta property="og:description" content="ネズミの画像を集めたアーカイブです。クリックで拡大表示できます。" />
+</head>
+
+
+<body>
+    <h1>ネズミアーカイブ</h1>
+    <input type="text" id="searchInput" placeholder="名前で検索するチュー…" />
+
+    <div class="img-container" id="imgContainer"></div>
+    <div id="modal">
+        <div id="modal-content">
+            <img id="modal-img" src="" alt="">
+            <p id="modal-caption"></p>
+            <button id="copy-btn">画像のリンクをコピーするチュー！</button>
+            <div id="modal-close">閉じるチュー ✖️</div>
+        </div>
+    </div>
+    <div id="toast"
+        style="display:none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+ background-color: #333; color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 14px; opacity: 0.9; z-index: 10000;">
+        コピーしましたチュー！
+    </div>
+    <footer>
+        <p>このサイトはネズミの画像を集めたアーカイブです。クリックで拡大表示できます。</p>
+        <p>画像の著作権は各権利者に帰属します。</p>
+        <p>商業利用は禁止されています。</p>
+        <p>商業利用禁止copyright mouse0329(github)</p>
+    </footer>
+    <script src="index.js">
+    </script>
+</body>
+
+</html>
