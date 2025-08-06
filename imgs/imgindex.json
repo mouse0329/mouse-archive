@@ -33,7 +33,7 @@
     },
     {
         "filename": "mouse-todolist.webp",
-        "description": "ネズミTODOリスト"
+        "description": "ネズミTODOリスト アイコン"
     },
     {
         "filename": "mouse-txt.webp",
@@ -60,6 +60,10 @@
         "description": "ネズミスケッチアイコン（ドット絵）カラフルなネズミ"
     },
     {
+        "filename": "nezumisuketitext.webp",
+        "description": "ネズミスケッチテキスト"
+    },
+    {
         "filename": "mouse-dot.webp",
         "description": "ネズミドット絵"
     },
@@ -74,5 +78,17 @@
     {
         "filename": "mouse-blinking-looking-up-right.webp",
         "description": "まばたきしながら右上を見つめるネズミ"
+    },
+    {
+        "filename": "mouse-archive.webp",
+        "description": "ネズミアーカイブアイコン"
+    },
+    {
+        "filename": "Semi-Mouse-Type.webp",
+        "description": "ネズミ ハーフタイプ"
+    },
+    {
+        "filename": "Semi-Mouse-Type-text.webp",
+        "description": "ネズミ ハーフタイプ 文字入り"
     }
 ]

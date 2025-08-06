@@ -154,3 +154,21 @@
      font-size: 14px;
      cursor: pointer;
  }
+
+ h1 img {
+     width: 50px;
+     height: 50px;
+     vertical-align: middle;
+     margin-right: 10px;
+ }
+
+ #searchContainer {
+     text-align: center;
+     margin: 20px 0;
+     position: sticky;
+     top: 0;
+     z-index: 1000;
+     /* 他の要素より前に表示したい場合 */
+     background-color: rgba(255, 255, 255, 0);
+     /* 背景色がないと透けるので注意 */
+ }
