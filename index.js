@@ -42,6 +42,19 @@ const renderImages = imgs => {
             document.getElementById('copy-btn').setAttribute('data-url', url);
             document.getElementById('modal').style.display = 'flex';
         });
+        div.addEventListener('click', () => {
+            const url = `${location.origin}/imgs/${filename}`;
+            document.getElementById('modal-img').src = url;
+            document.getElementById('modal-caption').textContent = description || filename;
+            document.getElementById('copy-btn').setAttribute('data-url', url);
+
+            // ダウンロードリンクの設定
+            const downloadBtn = document.getElementById('download-btn');
+            downloadBtn.href = url;
+            downloadBtn.download = filename; // 保存時のファイル名
+
+            document.getElementById('modal').style.display = 'flex';
+        });
     });
 };
 

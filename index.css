@@ -104,6 +104,30 @@
      width: 100%;
      height: 100%;
      background-color: rgba(0, 0, 0, 0.8);
+
+     /* 共通のボタンスタイル */
+     button {
+         padding: 8px 14px;
+         font-size: 1rem;
+         border: none;
+         border-radius: 6px;
+         cursor: pointer;
+         background-color: #2196f3;
+         /* 青色ボタン */
+         color: white;
+         user-select: none;
+         transition: background-color 0.3s;
+         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+     }
+
+     /* ホバー時 */
+     button:hover {
+         background-color: #1976d2;
+         /* ちょっと濃い青 */
+     }
+
+     /* 閉じるボタンは #modal-close で別指定済みだからここには入れなくてOKチュー */
+
  }
 
  #modal-content {
@@ -171,4 +195,26 @@
      /* 他の要素より前に表示したい場合 */
      background-color: rgba(255, 255, 255, 0);
      /* 背景色がないと透けるので注意 */
+ }
+
+ #download-btn {
+     display: inline-block;
+     padding: 8px 14px;
+     background-color: #4caf50;
+     /* 緑色ボタン */
+     color: white;
+     /* 文字白色 */
+     text-decoration: none;
+     /* 下線なし */
+     border-radius: 6px;
+     cursor: pointer;
+     user-select: none;
+     font-size: 1rem;
+     text-align: center;
+     transition: background-color 0.3s;
+ }
+
+ #download-btn:hover {
+     background-color: #45a049;
+     /* ホバーで少し濃い緑 */
  }
