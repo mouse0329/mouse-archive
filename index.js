@@ -1,4 +1,5 @@
 let allImages = [];
+const searchInput = document.getElementById('searchInput');
 
 const normalizeText = t =>
     t.normalize('NFKC').toLowerCase().replace(/[ぁ-ん]/g, ch => String.fromCharCode(ch.charCodeAt(0) + 0x60));
@@ -13,7 +14,44 @@ const showToast = (msg, dur = 2000) => {
 };
 
 const showResultCount = c => {
+    if (searchInput.value.trim() === '') {
+        document.getElementById('resultCount').textContent = '';
+        return;
+    }
     document.getElementById('resultCount').textContent = `${c}件ヒットしましたチュー！`;
+};
+
+// モーダル開く関数（URLパラメータもセット）
+const openModal = (filename, description) => {
+    const url = `${location.origin}/imgs/${filename}`;
+    const modal = document.getElementById('modal');
+    document.getElementById('modal-img').src = url;
+    document.getElementById('modal-caption').textContent = description || filename;
+    document.getElementById('copy-btn').setAttribute('data-url', url);
+
+    const downloadBtn = document.getElementById('download-btn');
+    downloadBtn.href = url;
+    downloadBtn.download = filename;
+
+    modal.style.display = 'flex';
+
+    // URLにimgパラメータをセット
+    const params = new URLSearchParams(window.location.search);
+    params.set('img', filename);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    history.replaceState(null, '', newUrl);
+};
+
+// モーダル閉じる関数（URLのimgパラメータ削除）
+const closeModal = () => {
+    document.getElementById('modal').style.display = 'none';
+
+    const params = new URLSearchParams(window.location.search);
+    params.delete('img');
+    const newUrl = params.toString()
+        ? `${window.location.pathname}?${params.toString()}`
+        : window.location.pathname;
+    history.replaceState(null, '', newUrl);
 };
 
 const renderImages = imgs => {
@@ -36,26 +74,27 @@ const renderImages = imgs => {
         container.appendChild(div);
 
         div.addEventListener('click', () => {
-            const url = `${location.origin}/imgs/${filename}`;
-            document.getElementById('modal-img').src = url;
-            document.getElementById('modal-caption').textContent = description || filename;
-            document.getElementById('copy-btn').setAttribute('data-url', url);
-            document.getElementById('modal').style.display = 'flex';
-        });
-        div.addEventListener('click', () => {
-            const url = `${location.origin}/imgs/${filename}`;
-            document.getElementById('modal-img').src = url;
-            document.getElementById('modal-caption').textContent = description || filename;
-            document.getElementById('copy-btn').setAttribute('data-url', url);
-
-            // ダウンロードリンクの設定
-            const downloadBtn = document.getElementById('download-btn');
-            downloadBtn.href = url;
-            downloadBtn.download = filename; // 保存時のファイル名
-
-            document.getElementById('modal').style.display = 'flex';
+            openModal(filename, description);
         });
     });
+};
+
+// URLのクエリパラメータを取得
+const getQueryParam = (key) => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(key) || '';
+};
+
+// URLのクエリパラメータをセット・更新
+const setQueryParam = (key, value) => {
+    const params = new URLSearchParams(window.location.search);
+    if (value) {
+        params.set(key, value);
+    } else {
+        params.delete(key);
+    }
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    history.replaceState(null, '', newUrl);
 };
 
 const loadImages = async () => {
@@ -70,6 +109,29 @@ const loadImages = async () => {
     }
 };
 
+// URLから検索語を復元して検索実行
+const restoreSearchFromURL = () => {
+    const query = getQueryParam('q');
+    if (query) {
+        searchInput.value = query;
+        searchInput.dispatchEvent(new Event('input'));
+    } else {
+        showResultCount(allImages.length);
+    }
+};
+
+// URLからimgパラメータ復元してモーダル開く
+const restoreModalFromURL = () => {
+    const params = new URLSearchParams(window.location.search);
+    const img = params.get('img');
+    if (img && allImages.length) {
+        const found = allImages.find(({ filename }) => filename === img);
+        if (found) {
+            openModal(found.filename, found.description);
+        }
+    }
+};
+
 document.getElementById('copy-btn').addEventListener('click', () => {
     const url = document.getElementById('copy-btn').dataset.url;
     navigator.clipboard.writeText(url)
@@ -78,14 +140,17 @@ document.getElementById('copy-btn').addEventListener('click', () => {
 });
 
 document.getElementById('modal-close').addEventListener('click', () => {
-    document.getElementById('modal').style.display = 'none';
+    closeModal();
 });
 document.getElementById('modal').addEventListener('click', e => {
-    if (e.target.id === 'modal') document.getElementById('modal').style.display = 'none';
+    if (e.target.id === 'modal') closeModal();
 });
 
-document.getElementById('searchInput').addEventListener('input', e => {
-    const input = normalizeText(e.target.value.trim());
+searchInput.addEventListener('input', e => {
+    const rawInput = e.target.value.trim();
+    const input = normalizeText(rawInput);
+    setQueryParam('q', rawInput);
+
     if (!input) {
         showResultCount(allImages.length);
         renderImages(allImages);
@@ -117,4 +182,8 @@ document.getElementById('searchInput').addEventListener('input', e => {
     }
 });
 
-loadImages();
+// 画像読み込み後にURLから状態復元
+loadImages().then(() => {
+    restoreSearchFromURL();
+    restoreModalFromURL();
+});
