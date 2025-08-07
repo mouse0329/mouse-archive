@@ -218,3 +218,28 @@
      background-color: #45a049;
      /* ホバーで少し濃い緑 */
  }
+
+ .model-item {
+     display: inline-block;
+     margin: 10px;
+     text-align: center;
+ }
+
+ model-viewer {
+     border-radius: 10px;
+     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+ }
+
+ #modal,
+ #model-modal {
+     display: none;
+     position: fixed;
+     z-index: 999;
+     top: 0;
+     left: 0;
+     width: 100%;
+     height: 100%;
+     background: rgba(0, 0, 0, 0.8);
+     justify-content: center;
+     align-items: center;
+ }

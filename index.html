@@ -12,11 +12,13 @@
     <meta property="og:title" content="ネズミアーカイブ" />
     <meta property="og:description" content="ネズミの画像を集めたアーカイブです。クリックで拡大表示できます。" />
     <link rel="icon" href="imgs/mouse-archive.webp" type="image/webp" />
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
 </head>
 
 
 <body>
-    <h1><img src="imgs/mouse-archive.webp" alt="ネズミアーカイブアイコン">ネズミアーカイブ</h1>
+    <h1 id="main-title"><img src="imgs/mouse-archive.webp" alt="ネズミアーカイブアイコン">ネズミアーカイブ</h1>
     <div id="searchContainer">
         <input type="text" id="searchInput" placeholder="名前で検索するチュー…" />
     </div>
@@ -33,6 +35,17 @@
             <div id="modal-close">閉じるチュー ✖️</div>
         </div>
     </div>
+
+    <div id="model-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1000;">
+        <div style="position:relative; background:#fff; border-radius:12px; padding:20px;">
+            <button id="model-close" style="position:absolute; top:10px; right:10px;">✖</button>
+            <model-viewer id="model-viewer" camera-controls auto-rotate ar
+                style="width:80vw; height:80vh;"></model-viewer>
+            <p id="model-caption" style="text-align:center; margin-top:10px;"></p>
+        </div>
+    </div>
+
     <div id="toast"
         style="display:none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
  background-color: #333; color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 14px; opacity: 0.9; z-index: 10000;">
@@ -42,7 +55,8 @@
         <p>このサイトはネズミの画像を集めたアーカイブです。クリックで拡大表示できます。</p>
         <p>画像の著作権は各権利者に帰属します。</p>
         <p>商業利用は禁止されています。</p>
-        <p>商業利用禁止copyright mouse0329(github)</p>
+        <p>商業利用禁止copyright <a href="https://github.com/mouse0329">mouse0329(github)</a><a
+                href="https://www.npmjs.com/~mouse0329">mouse0329(npm)</a></p>
     </footer>
     <script src="index.js">
     </script>
