@@ -28,15 +28,29 @@ const showResultCount = c => {
 
 // 画像用モーダルを開く
 const openImageModal = (filename, description) => {
+    const ext = filename.split('.').pop().toUpperCase();
     const url = `${location.origin}/imgs/${filename}`;
     const modal = document.getElementById('modal');
-    document.getElementById('modal-img').src = url;
-    document.getElementById('modal-caption').textContent = description || filename;
-    document.getElementById('copy-btn').setAttribute('data-url', url);
-
+    const imgTypeSelect = document.querySelector('select[name="img-type"]');
+    const modalImg = document.getElementById('modal-img');
     const downloadBtn = document.getElementById('download-btn');
+    const copyBtn = document.getElementById('copy-btn');
+
+    modalImg.src = url;
+    modalImg.alt = filename;
+    document.getElementById('modal-caption').textContent = description || filename;
+
     downloadBtn.href = url;
     downloadBtn.download = filename;
+
+    copyBtn.dataset.url = url;
+
+    // selectの初期値セット
+    if (ext === 'WEBP' || ext === 'PNG') {
+        imgTypeSelect.value = ext;
+    } else {
+        imgTypeSelect.value = 'WEBP';
+    }
 
     modal.style.display = 'flex';
 
@@ -56,7 +70,9 @@ const closeImageModal = () => {
         ? `${window.location.pathname}?${params.toString()}`
         : window.location.pathname;
     history.replaceState(null, '', newUrl);
-    document.getElementById('modal-img').src = '';
+    const modalImg = document.getElementById('modal-img');
+    modalImg.src = '';
+    modalImg.alt = '';
 };
 
 // 3Dモデル用モーダルを開く
@@ -97,7 +113,7 @@ const renderItems = items => {
     const container = document.getElementById('imgContainer');
     container.innerHTML = '';
 
-    items.forEach(({ type, filename, description }) => {
+    items.forEach(({ type, filename, description, thumbnail }) => {
         const div = document.createElement('div');
         div.className = 'img-item';
         div.style.display = 'inline-block';
@@ -125,9 +141,8 @@ const renderItems = items => {
             });
         } else if (type === 'model') {
             const img = document.createElement('img');
-            // item.thumbnail が modelindex.json にある前提で
-            console.log(items);
-            img.src = `thumbnails/${items.thumbnail || filename.replace(/\.[^.]+$/, '.webp')}`;
+            // 修正：items.thumbnail → thumbnail
+            img.src = `thumbnails/${thumbnail || filename.replace(/\.[^.]+$/, '.webp')}`;
             img.alt = description || filename;
             img.loading = 'lazy';
             img.style.width = '200px';
@@ -143,7 +158,6 @@ const renderItems = items => {
                 openModelModal(filename, description);
             });
         }
-
 
         container.appendChild(div);
     });
@@ -211,6 +225,30 @@ const restoreModalFromURL = () => {
         if (foundModel) openModelModal(foundModel.filename, foundModel.description);
     }
 };
+
+// 画像モーダルのselectで画像形式切り替え対応チュー
+const imgTypeSelect = document.querySelector('select[name="img-type"]');
+imgTypeSelect.addEventListener('change', () => {
+    const selectedType = imgTypeSelect.value.toLowerCase(); // 'webp' or 'png'
+    const modalImg = document.getElementById('modal-img');
+    const downloadBtn = document.getElementById('download-btn');
+    const copyBtn = document.getElementById('copy-btn');
+
+    const currentFilename = downloadBtn.download || modalImg.alt || '';
+    if (!currentFilename) return;
+
+    const baseName = currentFilename.replace(/\.[^.]+$/, '');
+    const newFilename = `${baseName}.${selectedType}`;
+    const newUrl = `${location.origin}/imgs/${newFilename}`;
+
+    modalImg.src = newUrl;
+    modalImg.alt = newFilename;
+
+    downloadBtn.href = newUrl;
+    downloadBtn.download = newFilename;
+
+    copyBtn.dataset.url = newUrl;
+});
 
 // コピーURLボタン
 document.getElementById('copy-btn').addEventListener('click', () => {

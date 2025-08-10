@@ -26,11 +26,15 @@
 
 
     <div class="img-container" id="imgContainer"></div>
-    <div id="modal">
+    <div id="modal" style="display:none;">
         <div id="modal-content">
             <img id="modal-img" src="" alt="">
             <p id="modal-caption"></p>
             <button id="copy-btn">画像のリンクをコピーする</button>
+            <select name="img-type">
+                <option value="WEBP">webp</option>
+                <option value="PNG">png</option>
+            </select>
             <a id="download-btn" href="" download>ダウンロード</a>
             <div id="modal-close">閉じるチュー ✖️</div>
         </div>

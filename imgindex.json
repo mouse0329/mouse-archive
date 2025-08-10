@@ -32,6 +32,30 @@
         "description": "クリアネズミ2"
     },
     {
+        "filename": "mouse-sleeping.webp",
+        "description": "眠っているネズミ"
+    },
+    {
+        "filename": "mouse-eye.webp",
+        "description": "ネズミの目"
+    },
+    {
+        "filename": "mouse-ear.webp",
+        "description": "ネズミの耳"
+    },
+    {
+        "filename": "mouse-smile.webp",
+        "description": "ネズミの笑顔"
+    },
+    {
+        "filename": "mouse-tail.webp",
+        "description": "ネズミの尻尾"
+    },
+    {
+        "filename": "mouse-tail-long.webp",
+        "description": "ネズミの長い尻尾"
+    },
+    {
         "filename": "mouse-todolist.webp",
         "description": "ネズミTODOリスト アイコン"
     },
@@ -82,6 +106,10 @@
     {
         "filename": "mouse-archive.webp",
         "description": "ネズミアーカイブアイコン"
+    },
+    {
+        "filename": "mouse-archive-only-box.webp",
+        "description": "ネズミアーカイブボックス(箱のみ)"
     },
     {
         "filename": "Semi-Mouse-Type.webp",
