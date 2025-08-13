@@ -3,5 +3,10 @@
         "filename": "mouse.glb",
         "thumbnail": "mouse.webp",
         "description": "ねずみの立体チュー"
+    },
+    {
+        "filename": "cheese-umbrella-v1.glb",
+        "thumbnail": "cheese-umbrella-v1.png",
+        "description": "チーズの傘V1"
     }
 ]
