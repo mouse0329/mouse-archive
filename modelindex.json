@@ -8,5 +8,10 @@
         "filename": "cheese-umbrella-v1.glb",
         "thumbnail": "cheese-umbrella-v1.png",
         "description": "チーズの傘V1"
+    },
+    {
+        "description": "チーズの傘V2(骨組みの追加)",
+        "filename": "cheese-umbrella-v2.glb",
+        "thumbnail": "cheese-umbrella-v2.png"
     }
 ]
