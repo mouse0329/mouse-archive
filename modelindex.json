@@ -13,5 +13,15 @@
         "description": "チーズの傘V2(骨組みの追加)",
         "filename": "cheese-umbrella-v2.glb",
         "thumbnail": "cheese-umbrella-v2.png"
+    },
+    {
+        "description": "チーズの傘V3(キャップの追加)",
+        "filename": "cheese-umbrella-v3.glb",
+        "thumbnail": "cheese-umbrella-v3.png"
+    },
+    {
+        "description": "チーズの傘シュールなバージョン",
+        "filename": "Cheese-Umbrella-(Surreal).glb",
+        "thumbnail": "Cheese-Umbrella-(Surreal).png"
     }
 ]
