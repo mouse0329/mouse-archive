@@ -23,5 +23,15 @@
         "description": "チーズの傘シュールなバージョン",
         "filename": "Cheese-Umbrella-(Surreal).glb",
         "thumbnail": "Cheese-Umbrella-(Surreal).png"
+    },
+    {
+        "description": "チーズの傘V4(ネズミプレートの追加)",
+        "filename": "cheese-umbrella-v4.glb",
+        "thumbnail": "cheese-umbrella-v4.png"
+    },
+    {
+        "description": "ねずみプレート（金属）",
+        "filename": "Mouse-Plate-(Metal).glb",
+        "thumbnail": "Mouse-Plate-(Metal).png"
     }
 ]

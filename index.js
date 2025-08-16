@@ -2,6 +2,8 @@ let allImages = [];
 let allModels = [];
 
 const searchInput = document.getElementById('searchInput');
+const error_window = document.getElementById('error_window');
+const errorCloseBtn = document.getElementById('error-close');
 
 // テキスト正規化（全角→半角、ひらがな→カタカナ小文字→小文字）
 const normalizeText = t =>
@@ -187,6 +189,8 @@ const loadImages = async () => {
         allImages = list.map(item => ({ ...item, type: 'image' }));
     } catch {
         console.error('画像の読み込みに失敗チュー');
+        error_window.style.display = 'flex';
+        document.getElementById('error-message').innerHTML = '画像の読み込みに失敗しました。';
     }
 };
 
@@ -198,6 +202,8 @@ const loadModels = async () => {
         allModels = list.map(item => ({ ...item, type: 'model' }));
     } catch {
         console.error('モデルの読み込みに失敗チュー');
+        error_window.style.display = 'flex';
+        document.getElementById('error-message').innerHTML = 'モデルの読み込みに失敗しました。';
     }
 };
 
@@ -217,14 +223,31 @@ const restoreModalFromURL = () => {
     const img = getQueryParam('img');
     if (img && allImages.length) {
         const found = allImages.find(({ filename }) => filename === img);
-        if (found) openImageModal(found.filename, found.description);
+        if (found) {
+            openImageModal(found.filename, found.description);
+        } else {
+            error_window.style.display = 'flex';
+            document.getElementById('error-message').innerHTML = 'URLパラメーターに誤りがあります。';
+        }
     }
     const model = getQueryParam('model');
     if (model && allModels.length) {
         const foundModel = allModels.find(({ filename }) => filename === model);
-        if (foundModel) openModelModal(foundModel.filename, foundModel.description);
+        if (foundModel) {
+            openModelModal(foundModel.filename, foundModel.description);
+        } else {
+            error_window.style.display = 'flex';
+            document.getElementById('error-message').innerHTML = 'URLパラメーターに誤りがあります。';
+        }
     }
 };
+// エラーメッセージウィンドウを閉じる
+errorCloseBtn.addEventListener('click', () => {
+    error_window.style.display = 'none';
+});
+error_window.addEventListener('click', e => {
+    if (e.target === error_window) error_window.style.display = 'none';
+});
 
 // 画像モーダルのselectで画像形式切り替え対応チュー
 const imgTypeSelect = document.querySelector('select[name="img-type"]');
