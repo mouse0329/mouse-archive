@@ -33,5 +33,10 @@
         "description": "ねずみプレート（金属）",
         "filename": "Mouse-Plate-(Metal).glb",
         "thumbnail": "Mouse-Plate-(Metal).png"
+    },
+    {
+        "description": "撮影cheese傘",
+        "filename": "camerracheese.glb",
+        "thumbnail": "camerracheese.png"
     }
 ]
