@@ -21,6 +21,8 @@
     <h1 id="main-title"><img src="imgs/mouse-archive.webp" alt="ネズミアーカイブアイコン">ネズミアーカイブ</h1>
     <div id="searchContainer">
         <input type="text" id="searchInput" placeholder="名前で検索するチュー…" />
+        <input type="button" value="検索をクリア"
+            onclick="document.getElementById('searchInput').value=''; document.getElementById('imgContainer').innerHTML=''; document.getElementById('resultCount').textContent='';searchAndFilter()" />
     </div>
     <div id="resultCount" style="margin-bottom: 10px; font-weight: bold;"></div>
 
@@ -30,7 +32,10 @@
         <div id="modal-content">
             <img id="modal-img" src="" alt="">
             <p id="modal-caption"></p>
-            <button id="copy-btn">画像のリンクをコピーする</button>
+            <div id="modal-detail" style="display:none; color:#666; font-size:0.9em; margin-top:4px;"></div>
+            <div id="modal-author" style="display:none; color:#999; font-size:0.8em; margin-top:2px;"></div>
+            <div id="modal-tags" style="display:none; margin-top:6px; font-size:0.95em;"></div>
+            <button id="img-copy-btn">画像のリンクをコピーする</button>
             <select name="img-type">
                 <option value="WEBP">webp</option>
                 <option value="PNG">png</option>
@@ -60,6 +65,28 @@
             <model-viewer id="model-viewer" camera-controls auto-rotate ar
                 style="width:80vw; height:80vh;"></model-viewer>
             <p id="model-caption" style="text-align:center; margin-top:10px;"></p>
+            <div id="model-detail"
+                style="display:none; color:#666; font-size:0.9em; margin-top:4px; text-align:center;"></div>
+            <div id="model-author"
+                style="display:none; color:#999; font-size:0.8em; margin-top:2px; text-align:center;"></div>
+            <div id="model-tags" style="display:none; margin-top:6px; font-size:0.95em; text-align:center;"></div>
+            <button id="model-copy-btn">モデルのリンクをコピーする</button>
+        </div>
+    </div>
+
+    <div id="video-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1000;">
+        <div style="position:relative; background:#fff; border-radius:12px; padding:20px;">
+            <button id="video-close" style="position:absolute; top:10px; right:10px;">✖</button>
+            <video id="video-player" controls
+                style="width:80vw; max-height:70vh; display:block; margin:0 auto;"></video>
+            <p id="video-caption" style="text-align:center; margin-top:10px;"></p>
+            <div id="video-detail"
+                style="display:none; color:#666; font-size:0.9em; margin-top:4px; text-align:center;"></div>
+            <div id="video-author"
+                style="display:none; color:#999; font-size:0.8em; margin-top:2px; text-align:center;"></div>
+            <div id="video-tags" style="display:none; margin-top:6px; font-size:0.95em; text-align:center;"></div>
+            <button id="video-copy-btn">動画のリンクをコピーする</button>
         </div>
     </div>
 

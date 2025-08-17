@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>ネズミアーカイブ ビューア</title>
+    <link rel="stylesheet" href="index.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+</head>
+
+<body>
+    <h1 id="main-title"><img src="imgs/mouse-archive.webp" alt="ネズミアーカイブアイコン">ネズミアーカイブ</h1>
+    <div id="viewer-content"
+        style="max-width:600px;margin:40px auto;padding:20px;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.12);text-align:center;">
+        <h2 id="viewer-title">ビューア</h2>
+        <div id="viewer-media"></div>
+        <p id="viewer-caption"></p>
+        <div id="viewer-detail" style="color:#666;font-size:0.95em;margin-top:6px;"></div>
+        <div id="viewer-author" style="color:#999;font-size:0.85em;margin-top:2px;"></div>
+        <div id="viewer-tags" style="margin-top:8px;"></div>
+        <div style="margin-top:20px;">
+            <a href="index.html" style="color:#1976d2;">一覧に戻る</a>
+        </div>
+    </div>
+    <script>
+        // クエリ取得
+        function getQueryParam(key) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(key) || '';
+        }
+
+        // タグ表示
+        function renderTags(tags) {
+            if (!Array.isArray(tags) || tags.length === 0) return '';
+            return tags.map(tag => `<a href="viewer.html?${window.location.search.split('?')[1].split('&')[0]}&q=${encodeURIComponent(tag)}" class="modal-tag" style="margin-right:4px;">${tag}</a>`).join(' ');
+        }
+
+        // データ取得
+        async function fetchData(url) {
+            const res = await fetch(url);
+            if (!res.ok) return [];
+            return await res.json();
+        }
+
+        async function main() {
+            const img = getQueryParam('img');
+            const video = getQueryParam('video');
+            const model = getQueryParam('model');
+            let item = null;
+
+            if (img) {
+                const list = await fetchData('imgindex.json');
+                item = list.find(x => x.filename === img);
+                if (item) item.type = 'image';
+            } else if (video) {
+                const list = await fetchData('videoindex.json');
+                item = Array.isArray(list) ? list.find(x => x.filename === video) : null;
+                if (item) item.type = 'video';
+            } else if (model) {
+                const list = await fetchData('modelindex.json');
+                item = Array.isArray(list) ? list.find(x => x.filename === model) : null;
+                if (item) item.type = 'model';
+            }
+
+            const mediaDiv = document.getElementById('viewer-media');
+            const caption = document.getElementById('viewer-caption');
+            const detailDiv = document.getElementById('viewer-detail');
+            const authorDiv = document.getElementById('viewer-author');
+            const tagsDiv = document.getElementById('viewer-tags');
+            const title = document.getElementById('viewer-title');
+
+            if (!item) {
+                mediaDiv.innerHTML = `<img src="imgs/404.webp" alt="404画像" style="width:80%;border-radius:10px;">`;
+                caption.textContent = "データが見つかりませんチュー…";
+                title.textContent = "ビューア";
+                return;
+            }
+
+            title.textContent = item.description || item.filename;
+
+            if (item.type === 'image') {
+                mediaDiv.innerHTML = `<img src="imgs/${item.filename}" alt="${item.description || item.filename}" style="max-width:100%;max-height:60vh;border-radius:10px;">`;
+            } else if (item.type === 'video') {
+                mediaDiv.innerHTML = `<video src="videos/${item.filename}" controls style="max-width:100%;max-height:60vh;border-radius:10px;"></video>`;
+            } else if (item.type === 'model') {
+                mediaDiv.innerHTML = `<model-viewer src="models/${item.filename}" camera-controls auto-rotate ar style="width:100%;height:60vh;border-radius:10px;"></model-viewer>`;
+            }
+
+            caption.textContent = item.description || item.filename;
+            detailDiv.textContent = item.detail || '';
+            authorDiv.textContent = item.author ? `by ${item.author}` : '';
+            tagsDiv.innerHTML = renderTags(item.tags);
+
+        }
+
+        main();
+    </script>
+</body>
+
+</html>

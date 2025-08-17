@@ -68,6 +68,12 @@ h1 {
     letter-spacing: 0.02em;
 }
 
+/* タグ表示 */
+.item-tags {
+    margin-top: 4px;
+    text-align: center;
+}
+
 /* スマホレスポンシブ */
 @media (max-width: 600px) {
     .img-container {
@@ -173,6 +179,7 @@ select[name="img-type"] option {
 /* ボタン類 */
 button,
 #download-btn,
+input[type="button"],
 #copy-btn {
     padding: 8px 14px;
     font-size: 1rem;
@@ -227,6 +234,10 @@ h1 img {
 
 /* 検索＆セレクト配置 */
 #searchContainer {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
     text-align: center;
     margin: 20px 0;
     position: sticky;
@@ -256,4 +267,24 @@ footer a {
 footer a:hover {
     color: #1976d2;
     text-decoration: underline;
+}
+
+/* タグリンクスタイル */
+.modal-tag {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1976d2;
+    border-radius: 6px;
+    padding: 2px 10px;
+    margin: 2px 2px 2px 0;
+    text-decoration: none;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.modal-tag:hover {
+    background: #1976d2;
+    color: #fff;
 }

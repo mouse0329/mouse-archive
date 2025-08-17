@@ -2,41 +2,91 @@
     {
         "filename": "mouse.glb",
         "thumbnail": "mouse.webp",
-        "description": "ねずみの立体チュー"
+        "description": "ねずみの立体チュー",
+        "author": "mouse0329",
+        "tags": [
+            "#ネズミ",
+            "#3D"
+        ]
     },
     {
         "filename": "cheese-umbrella-v1.glb",
         "thumbnail": "cheese-umbrella-v1.png",
-        "description": "チーズの傘V1"
+        "description": "チーズの傘V1",
+        "author": "mouse0329",
+        "tags": [
+            "#チーズ",
+            "#傘",
+            "#3D"
+        ]
     },
     {
         "description": "チーズの傘V2(骨組みの追加)",
         "filename": "cheese-umbrella-v2.glb",
-        "thumbnail": "cheese-umbrella-v2.png"
+        "thumbnail": "cheese-umbrella-v2.png",
+        "author": "mouse0329",
+        "tags": [
+            "#チーズ",
+            "#傘",
+            "#3D"
+        ]
     },
     {
         "description": "チーズの傘V3(キャップの追加)",
         "filename": "cheese-umbrella-v3.glb",
-        "thumbnail": "cheese-umbrella-v3.png"
+        "thumbnail": "cheese-umbrella-v3.png",
+        "author": "mouse0329",
+        "tags": [
+            "#チーズ",
+            "#傘",
+            "#3D"
+        ]
     },
     {
         "description": "チーズの傘シュールなバージョン",
         "filename": "Cheese-Umbrella-(Surreal).glb",
-        "thumbnail": "Cheese-Umbrella-(Surreal).png"
+        "thumbnail": "Cheese-Umbrella-(Surreal).png",
+        "author": "mouse0329",
+        "tags": [
+            "#チーズ",
+            "#傘",
+            "#シュール",
+            "#3D"
+        ]
     },
     {
         "description": "チーズの傘V4(ネズミプレートの追加)",
         "filename": "cheese-umbrella-v4.glb",
-        "thumbnail": "cheese-umbrella-v4.png"
+        "thumbnail": "cheese-umbrella-v4.png",
+        "author": "mouse0329",
+        "tags": [
+            "#チーズ",
+            "#傘",
+            "#3D"
+        ]
     },
     {
         "description": "ねずみプレート（金属）",
         "filename": "Mouse-Plate-(Metal).glb",
-        "thumbnail": "Mouse-Plate-(Metal).png"
+        "thumbnail": "Mouse-Plate-(Metal).png",
+        "author": "mouse0329",
+        "tags": [
+            "#ネズミ",
+            "#プレート",
+            "#金属",
+            "#3D"
+        ]
     },
     {
         "description": "撮影cheese傘",
         "filename": "camerracheese.glb",
-        "thumbnail": "camerracheese.png"
+        "thumbnail": "camerracheese.png",
+        "author": "mouse0329",
+        "tags": [
+            "#チーズ",
+            "#傘",
+            "#撮影",
+            "#3D"
+        ]
     }
 ]
