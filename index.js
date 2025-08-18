@@ -18,10 +18,11 @@ const getSearchText = (filename, desc, detail, author) =>
     );
 
 // トースト表示
-const showToast = (msg, dur = 2000) => {
+const showToast = (msg, dur = 2000, c) => {
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.style.display = 'block';
+    t.style.backgroundColor = c || 'black';
     setTimeout(() => (t.style.display = 'none'), dur);
 };
 
@@ -92,6 +93,21 @@ const openImageModal = (filename, description, detail, author, tags) => {
 
     copyBtn.dataset.url = location.origin + "/viewer.html" + `?img=${filename}`;
 
+    // お気に入りボタン生成・設置
+    let favBtn = document.getElementById('modal-fav-btn');
+    if (!favBtn) {
+        favBtn = document.createElement('button');
+        favBtn.id = 'modal-fav-btn';
+        favBtn.style.margin = '8px 0';
+        favBtn.style.border = 'none';
+        favBtn.style.borderRadius = '6px';
+        favBtn.style.padding = '6px 16px';
+        favBtn.style.cursor = 'pointer';
+        const modalContent = document.getElementById('modal-content');
+        modalContent.insertBefore(favBtn, modalContent.firstChild);
+    }
+    updateModalFavorite('image', filename, description);
+
     // selectの初期値セット
     if (ext === 'WEBP' || ext === 'PNG') {
         imgTypeSelect.value = ext;
@@ -129,10 +145,16 @@ const openModelModal = (filename, description, detail, author, tags) => {
     const modelViewer = document.getElementById('model-viewer');
     const modelCaption = document.getElementById('model-caption');
     const modelCopyBtn = document.getElementById('model-copy-btn');
+    const modelDownloadBtn = document.getElementById('model-download-btn');
 
     modelViewer.src = `models/${filename}`;
     modelCaption.textContent = description || filename;
     modelCopyBtn.dataset.url = location.origin + "/viewer.html" + `?model=${filename}`;
+    // ダウンロードボタン設定
+    if (modelDownloadBtn) {
+        modelDownloadBtn.href = `${location.origin}/models/${filename}`;
+        modelDownloadBtn.download = filename;
+    }
 
     // detail表示
     const modelDetail = document.getElementById('model-detail');
@@ -152,6 +174,21 @@ const openModelModal = (filename, description, detail, author, tags) => {
         modelTags.innerHTML = renderTags(tags);
         modelTags.style.display = (tags && tags.length) ? 'block' : 'none';
     }
+    // お気に入りボタン生成・設置
+    let favBtn = document.getElementById('model-fav-btn');
+    if (!favBtn) {
+        favBtn = document.createElement('button');
+        favBtn.id = 'model-fav-btn';
+        favBtn.style.margin = '8px 0';
+        favBtn.style.border = 'none';
+        favBtn.style.borderRadius = '6px';
+        favBtn.style.padding = '6px 16px';
+        favBtn.style.cursor = 'pointer';
+        const modalDiv = document.querySelector('#model-modal > div');
+        modalDiv.insertBefore(favBtn, modalDiv.firstChild);
+    }
+    updateModalFavorite('model', filename, description);
+
     modelModal.style.display = 'flex';
 
     // URLにモデルパラメータ追加
@@ -183,10 +220,16 @@ const openVideoModal = (filename, description, detail, author, tags) => {
     const videoPlayer = document.getElementById('video-player');
     const videoCaption = document.getElementById('video-caption');
     const videoCopyBtn = document.getElementById('video-copy-btn');
+    const videoDownloadBtn = document.getElementById('video-download-btn');
 
     videoPlayer.src = `videos/${filename}`;
     videoCaption.textContent = description || filename;
     videoCopyBtn.dataset.url = location.origin + "/viewer.html" + `?video=${filename}`;
+    // ダウンロードボタン設定
+    if (videoDownloadBtn) {
+        videoDownloadBtn.href = `${location.origin}/videos/${filename}`;
+        videoDownloadBtn.download = filename;
+    }
 
     // detail表示
     const videoDetail = document.getElementById('video-detail');
@@ -206,6 +249,21 @@ const openVideoModal = (filename, description, detail, author, tags) => {
         videoTags.innerHTML = renderTags(tags);
         videoTags.style.display = (tags && tags.length) ? 'block' : 'none';
     }
+    // お気に入りボタン生成・設置
+    let favBtn = document.getElementById('video-fav-btn');
+    if (!favBtn) {
+        favBtn = document.createElement('button');
+        favBtn.id = 'video-fav-btn';
+        favBtn.style.margin = '8px 0';
+        favBtn.style.border = 'none';
+        favBtn.style.borderRadius = '6px';
+        favBtn.style.padding = '6px 16px';
+        favBtn.style.cursor = 'pointer';
+        const modalDiv = document.querySelector('#video-modal > div');
+        modalDiv.insertBefore(favBtn, modalDiv.firstChild);
+    }
+    updateModalFavorite('video', filename, description);
+
     videoModal.style.display = 'flex';
 
     // URLに動画パラメータ追加
@@ -230,6 +288,51 @@ const closeVideoModal = () => {
         : window.location.pathname;
     history.replaceState(null, '', newUrl);
 };
+
+// お気に入り管理
+const FAVORITE_KEY = 'mouse_archive_favorites';
+const getFavorites = () => {
+    try {
+        return JSON.parse(localStorage.getItem(FAVORITE_KEY)) || [];
+    } catch {
+        return [];
+    }
+};
+const setFavorites = (arr) => {
+    localStorage.setItem(FAVORITE_KEY, JSON.stringify(arr));
+};
+const isFavorite = (type, filename) => {
+    const favs = getFavorites();
+    return favs.some(f => f.type === type && f.filename === filename);
+};
+const toggleFavorite = (type, filename, description) => {
+    let favs = getFavorites();
+    if (isFavorite(type, filename)) {
+        favs = favs.filter(f => !(f.type === type && f.filename === filename));
+        showToast('お気に入り解除しました', 1200, '#666');
+    } else {
+        favs.push({ type, filename, description });
+        showToast('お気に入り追加しました', 1200, '#f90');
+    }
+    setFavorites(favs);
+    updateModalFavorite(type, filename, description);
+};
+
+// モーダル内お気に入りボタンの状態更新
+function updateModalFavorite(type, filename, description) {
+    let favBtn;
+    if (type === 'image') {
+        favBtn = document.getElementById('modal-fav-btn');
+    } else if (type === 'model') {
+        favBtn = document.getElementById('model-fav-btn');
+    } else if (type === 'video') {
+        favBtn = document.getElementById('video-fav-btn');
+    }
+    if (!favBtn) return;
+    favBtn.textContent = isFavorite(type, filename) ? '★お気に入り' : '☆お気に入り';
+    favBtn.style.background = isFavorite(type, filename) ? '#ffe066' : '#eee';
+    favBtn.onclick = () => toggleFavorite(type, filename, description);
+}
 
 // 画像・モデル・動画一覧を描画
 const renderItems = items => {
@@ -644,3 +747,59 @@ Promise.all([loadImages(), loadModels(), loadVideos()]).then(() => {
     restoreSearchFromURL();
     restoreModalFromURL();
 });
+
+// お気に入り一覧表示
+const showFavoritesBtn = document.getElementById('show-favorites-btn');
+const favoritesModal = document.getElementById('favorites-modal');
+const favoritesCloseBtn = document.getElementById('favorites-close');
+const favoritesListDiv = document.getElementById('favorites-list');
+
+showFavoritesBtn.addEventListener('click', () => {
+    renderFavoritesList();
+    favoritesModal.style.display = 'flex';
+});
+favoritesCloseBtn.addEventListener('click', () => {
+    favoritesModal.style.display = 'none';
+});
+favoritesModal.addEventListener('click', e => {
+    if (e.target === favoritesModal) favoritesModal.style.display = 'none';
+});
+
+function renderFavoritesList() {
+    const favs = getFavorites();
+    if (!favs.length) {
+        favoritesListDiv.innerHTML = '<p style="color:#999;">お気に入りはありません。</p>';
+        return;
+    }
+    favoritesListDiv.innerHTML = favs.map(fav => {
+        let icon = fav.type === 'image' ? '🖼️' : fav.type === 'model' ? '🧩' : '🎬';
+        return `<div style="margin-bottom:10px;display:flex;align-items:center;">
+            <span style="font-size:1.2em;margin-right:8px;">${icon}</span>
+            <span style="flex:1;">${fav.description || fav.filename}</span>
+            <button style="margin-left:8px;" onclick="window._favOpen('${fav.type}','${fav.filename}')">表示</button>
+            <button style="margin-left:4px;" onclick="window._favRemove('${fav.type}','${fav.filename}')">削除</button>
+        </div>`;
+    }).join('');
+}
+
+// お気に入り一覧から表示/削除用グローバル関数
+window._favOpen = (type, filename) => {
+    favoritesModal.style.display = 'none';
+    if (type === 'image') {
+        const found = allImages.find(i => i.filename === filename);
+        if (found) openImageModal(found.filename, found.description, found.detail, found.author, found.tags || []);
+    } else if (type === 'model') {
+        const found = allModels.find(m => m.filename === filename);
+        if (found) openModelModal(found.filename, found.description, found.detail, found.author, found.tags || []);
+    } else if (type === 'video') {
+        const found = allVideos.find(v => v.filename === filename);
+        if (found) openVideoModal(found.filename, found.description, found.detail, found.author, found.tags || []);
+    }
+};
+window._favRemove = (type, filename) => {
+    let favs = getFavorites();
+    favs = favs.filter(f => !(f.type === type && f.filename === filename));
+    setFavorites(favs);
+    renderFavoritesList();
+    showToast('お気に入りから削除しました', 1200, '#666');
+};

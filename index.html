@@ -23,6 +23,7 @@
         <input type="text" id="searchInput" placeholder="名前で検索するチュー…" />
         <input type="button" value="検索をクリア"
             onclick="document.getElementById('searchInput').value=''; document.getElementById('imgContainer').innerHTML=''; document.getElementById('resultCount').textContent='';searchAndFilter()" />
+        <button id="show-favorites-btn" style="margin-left:8px;">お気に入り一覧</button>
     </div>
     <div id="resultCount" style="margin-bottom: 10px; font-weight: bold;"></div>
 
@@ -35,6 +36,8 @@
             <div id="modal-detail" style="display:none; color:#666; font-size:0.9em; margin-top:4px;"></div>
             <div id="modal-author" style="display:none; color:#999; font-size:0.8em; margin-top:2px;"></div>
             <div id="modal-tags" style="display:none; margin-top:6px; font-size:0.95em;"></div>
+            <button id="modal-fav-btn"
+                style="margin:8px 0; border:none; border-radius:6px; padding:6px 16px; cursor:pointer;"></button>
             <button id="img-copy-btn">画像のリンクをコピーする</button>
             <select name="img-type">
                 <option value="WEBP">webp</option>
@@ -70,7 +73,10 @@
             <div id="model-author"
                 style="display:none; color:#999; font-size:0.8em; margin-top:2px; text-align:center;"></div>
             <div id="model-tags" style="display:none; margin-top:6px; font-size:0.95em; text-align:center;"></div>
+            <button id="model-fav-btn"
+                style="margin:8px 0; border:none; border-radius:6px; padding:6px 16px; cursor:pointer;"></button>
             <button id="model-copy-btn">モデルのリンクをコピーする</button>
+            <a id="model-download-btn" href="" download style="margin-left:8px;">ダウンロード</a>
         </div>
     </div>
 
@@ -86,7 +92,21 @@
             <div id="video-author"
                 style="display:none; color:#999; font-size:0.8em; margin-top:2px; text-align:center;"></div>
             <div id="video-tags" style="display:none; margin-top:6px; font-size:0.95em; text-align:center;"></div>
+            <button id="video-fav-btn"
+                style="margin:8px 0; border:none; border-radius:6px; padding:6px 16px; cursor:pointer;"></button>
             <button id="video-copy-btn">動画のリンクをコピーする</button>
+            <a id="video-download-btn" href="" download style="margin-left:8px;">ダウンロード</a>
+        </div>
+    </div>
+
+    <!-- お気に入りリストモーダル -->
+    <div id="favorites-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:10000;">
+        <div
+            style="position:relative; background:#fff; border-radius:12px; padding:24px; min-width:320px; max-width:90vw;">
+            <button id="favorites-close" style="position:absolute; top:10px; right:10px;">✖</button>
+            <h2 style="margin-top:0;">お気に入り一覧</h2>
+            <div id="favorites-list"></div>
         </div>
     </div>
 
