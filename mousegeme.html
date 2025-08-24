@@ -15,7 +15,9 @@
         #game {
             position: relative;
             height: 100vh;
-            width: 100vh;
+            width: 100%;
+            /* 画面幅にフィット */
+            max-width: 400px;
             margin: auto;
             overflow: hidden;
             background-image: url("imgs/cheese_building.webp");
@@ -526,13 +528,13 @@
 
         // ====== ネズミ移動 ======
         function moveMouse(x) {
-            if (gameOver || paused) return;
             const rect = game.getBoundingClientRect();
             let nx = x - rect.left - mouse.offsetWidth / 2;
             if (nx < 0) nx = 0;
             if (nx > rect.width - mouse.offsetWidth) nx = rect.width - mouse.offsetWidth;
             mouse.style.left = nx + "px";
         }
+
         game.addEventListener("mousemove", e => { moveMouse(e.clientX); });
         game.addEventListener("touchmove", e => { moveMouse(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
 
