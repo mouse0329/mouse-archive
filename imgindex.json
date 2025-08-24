@@ -284,5 +284,13 @@
             "#タイプ",
             "#文字入り"
         ]
+    },
+{
+        "filename": "drop.webp",
+        "description": "雫",
+        "author": "okaka",
+        "tags": [
+            "#水"
+        ]
     }
 ]
