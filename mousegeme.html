@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ネズミとチーズゲーム</title>
     <style>
         body {
@@ -168,7 +169,7 @@
         const IMG_MOUSE = "imgs/mouse-one.webp";       // ネズミ
         const IMG_BASKET = "imgs/mouse-archive.webp";   // カゴ
         const IMG_CHEESE = "imgs/cheese.webp";          // チーズ
-        const IMG_WATER = "imgs/nezumi-drawing_icon.png"; // 水
+        const IMG_WATER = "imgs/drop.webp"; // 水
         const IMG_RARE = "imgs/rare_cheese.webp";       // レアチーズ（新規画像を用意してください）
 
         // ====== ゲーム初期設定 ======
@@ -343,8 +344,8 @@
             item.className = "item";
             // レアチーズ出現判定
             let rand = Math.random();
-            let isRare = rand < 1; // 8%でレアチーズ
-            let isCheese = !isRare && rand < 0; // 46%で普通チーズ
+            let isRare = rand < 0.08; // 8%でレアチーズ
+            let isCheese = !isRare && rand < 0.46; // 46%で普通チーズ
             if (isRare) {
                 item.style.backgroundImage = `url(${IMG_CHEESE})`;
                 item.dataset.type = "rare";
