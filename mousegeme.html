@@ -36,11 +36,17 @@ body { margin:0; overflow:hidden; background:#eef; }
 }
 .item {
     position: absolute;
-    width: 40px;          /* 横幅固定 */
-    height: auto;         /* 縦は自動 */
+    width: 40px;
+    height: auto;       /* 通常は自動 */
+    min-height: 40px;   /* 縦の最低値を40pxに設定 */
     background-size: cover;
     background-position: center;
     z-index: 10;
+}
+
+/* data-type="water" の場合 */
+.item[data-type="water"] {
+    height: 60px;       /* 高さを60pxに固定 */
 }
 #cheeseCount {
     position: absolute;
