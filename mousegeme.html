@@ -1,336 +1,765 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ネズミとチーズゲーム</title>
-<style>
-body { margin:0; overflow:hidden; background:#eef; }
-#game {
-    position: relative;
-    width: 100vw;
-    max-width: 400px;
-    height: 80vh;
-    margin: auto;
-    border:2px solid #000;
-    overflow:hidden;
-    background-image:url("imgs/cheese_building.webp");
-    background-size:cover;
-}
-.mouse {
-    position: absolute;
-    bottom: 10px;
-    width: 60px;
-    height: 60px;
-    background-size: cover;
-    background-position: center;
-}
-.basket {
-    position: absolute;
-    width: 70px;
-    height: 40px;
-    top: -35px;
-    left: -5px;
-    background-size: cover;
-    background-position: center;
-}
-.item {
-    position: absolute;
-    width: 40px;
-    height: auto;       /* 通常は自動 */
-    min-height: 40px;   /* 縦の最低値を40pxに設定 */
-    background-size: cover;
-    background-position: center;
-    z-index: 10;
-}
-
-/* data-type="water" の場合 */
-.item[data-type="water"] {
-    height: 70px;       /* 高さを60pxに固定 */
-}
-#cheeseCount {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 20px;
-    background: rgba(255,255,255,0.7);
-    padding:4px 12px;
-    border-radius:10px;
-    z-index:11;
-}
-#pauseBtn {
-    position:absolute;
-    top:10px;
-    left:15px;
-    font-size:18px;
-    padding:4px 12px;
-    border-radius:10px;
-    z-index:0;
-    background:#ffe;
-    border:1px solid #aaa;
-    cursor:pointer;
-}
-#window {
-    display:none;
-    position:absolute;
-    top:0; left:0;
-    width:100%; height:100%;
-    background: rgba(255,255,255,0.8);
-    justify-content:center;
-    align-items:center;
-    flex-direction:column;
-    z-index:1000;
-}
-#window button {
-    font-size:24px;
-    padding:10px 32px;
-    margin:10px auto 0 auto;
-    display:block;
-    border-radius:12px;
-    border:none;
-    box-shadow:0 2px 8px rgba(0,0,0,0.08);
-    transition: background 0.2s;
-}
-#window .start-btn{ background:#4caf50; color:#fff;}
-#window .retry-btn{ background:#2196f3; color:#fff;}
-#window .title-btn{ background:#ff9800; color:#fff;}
-#window .diff-btn{ background:#888; color:#fff; font-size:20px; margin-right:10px;}
-#window .diff-btn.selected{ background:#333;}
-.particle {
-    position:absolute;
-    width:10px; height:10px;
-    border-radius:50%;
-    background:#7fdcff;
-    pointer-events:none;
-    opacity:0.8;
-    z-index:9999;
-    animation:particle-move 0.7s linear forwards;
-}
-@keyframes particle-move {
-    0%{opacity:0.8; transform:scale(1) translateY(0);}
-    80%{opacity:0.6;}
-    100%{opacity:0; transform:scale(0.5) translateY(-40px);}
-}
-</style>
-</head>
-<body>
-<div id="game">
-    <div class="mouse" id="mouse"><div class="basket" id="basket"></div></div>
-    <div id="window"></div>
-    <div id="cheeseCount">チーズ:0</div>
-    <button id="pauseBtn">⏸ 一時停止</button>
-</div>
-
-<script>
-// ====== 画像 ======
-const IMG_MOUSE="imgs/mouse-one.webp";
-const IMG_BASKET="imgs/mouse-archive.webp";
-const IMG_CHEESE="imgs/cheese.webp";
-const IMG_RARE  ="imgs/cheese.webp"; // 今は普通のチーズ
-const IMG_WATER="imgs/drop.png";
-
-// ====== 初期設定 ======
-const game = document.getElementById("game");
-const mouse = document.getElementById("mouse");
-const basket = document.getElementById("basket");
-const cheeseDisplay = document.getElementById("cheeseCount");
-const windowDiv = document.getElementById("window");
-const pauseBtn = document.getElementById("pauseBtn");
-
-let gameOver=false;
-let cheeseCount=0;
-let dropTimer=null;
-let paused=false;
-let fallTimers=[];
-let pausedItems=[];
-let difficulty="normal";
-let dropInterval=1000;
-let fallSpeed=5;
-
-// ネズミ・カゴ画像
-mouse.style.backgroundImage=`url(${IMG_MOUSE})`;
-basket.style.backgroundImage=`url(${IMG_BASKET})`;
-
-// ====== ウィンドウ表示 ======
-function windowFunc(type,message){
-    windowDiv.innerHTML="";
-    windowDiv.style.display=(type? "flex":"none");
-    if(!type) return;
-    if(type==="start"){
-        const title=document.createElement("div");
-        title.textContent="ゲームスタート";
-        title.style.fontSize="28px";
-        title.style.marginBottom="20px";
-        title.style.textAlign="center";
-        windowDiv.appendChild(title);
-
-        const diffDiv=document.createElement("div");
-        diffDiv.style.marginBottom="18px"; diffDiv.style.textAlign="center";
-        diffDiv.innerHTML=`
-            <button class="diff-btn" id="easyBtn">やさしい</button>
-            <button class="diff-btn" id="normalBtn">ふつう</button>
-            <button class="diff-btn" id="hardBtn">むずかしい</button>
-        `;
-        windowDiv.appendChild(diffDiv);
-
-        setTimeout(()=>{
-            const easyBtn=document.getElementById("easyBtn");
-            const normalBtn=document.getElementById("normalBtn");
-            const hardBtn=document.getElementById("hardBtn");
-            function select(btn){[easyBtn,normalBtn,hardBtn].forEach(b=>b.classList.remove("selected")); btn.classList.add("selected");}
-            easyBtn.onclick=()=>{difficulty="easy"; dropInterval=1300; fallSpeed=4; select(easyBtn); showStartBtn();}
-            normalBtn.onclick=()=>{difficulty="normal"; dropInterval=1000; fallSpeed=6; select(normalBtn); showStartBtn();}
-            hardBtn.onclick=()=>{difficulty="hard"; dropInterval=700; fallSpeed=9; select(hardBtn); showStartBtn();}
-        },0);
-
-        function showStartBtn(){
-            windowDiv.innerHTML=""; windowDiv.appendChild(title);
-            const info=document.createElement("div");
-            info.textContent="選択: "+(difficulty==="easy"?"やさしい":difficulty==="normal"?"ふつう":"むずかしい");
-            info.style.fontSize="18px"; info.style.marginBottom="18px"; info.style.textAlign="center";
-            windowDiv.appendChild(info);
-            const btn=document.createElement("button");
-            btn.textContent="スタート"; btn.className="start-btn";
-            btn.onclick=()=>{windowDiv.style.display="none"; startGame();}
-            windowDiv.appendChild(btn);
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ネズミとチーズゲーム</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #eef;
         }
-    } else if(type==="gameover"){
-        const msgDiv=document.createElement("div"); msgDiv.textContent=message;
-        msgDiv.style.fontSize="22px"; msgDiv.style.marginBottom="20px"; msgDiv.style.textAlign="center";
-        windowDiv.appendChild(msgDiv);
-        const retryBtn=document.createElement("button"); retryBtn.textContent="リトライ"; retryBtn.className="retry-btn";
-        retryBtn.onclick=()=>{windowDiv.style.display="none"; startGame();}
-        windowDiv.appendChild(retryBtn);
-        const titleBtn=document.createElement("button"); titleBtn.textContent="タイトルに戻る"; titleBtn.className="title-btn";
-        titleBtn.style.marginTop="12px"; titleBtn.onclick=()=>{location.reload();}
-        windowDiv.appendChild(titleBtn);
-    }
-}
 
-// ====== リセット ======
-function resetGame(){
-    gameOver=false; cheeseCount=0; cheeseDisplay.textContent="チーズ:"+cheeseCount;
-    document.querySelectorAll(".item").forEach(i=>i.remove());
-    if(dropTimer) clearInterval(dropTimer); dropTimer=null;
-    fallTimers.forEach(f=>clearInterval(f)); fallTimers=[]; pausedItems=[]; paused=false;
-    pauseBtn.textContent="⏸ 一時停止";
-}
-
-// ====== スタート ======
-function startGame(){ resetGame(); windowFunc(); if(!dropTimer) dropTimer=setInterval(dropItem,dropInterval); }
-
-// ====== ネズミ移動 ======
-function moveMouse(x){
-    if(gameOver||paused) return;
-    const rect=game.getBoundingClientRect();
-    let nx=x-rect.left-mouse.offsetWidth/2;
-    if(nx<0) nx=0; if(nx>rect.width-mouse.offsetWidth) nx=rect.width-mouse.offsetWidth;
-    mouse.style.left=nx+"px";
-}
-game.addEventListener("mousemove", e=>{ moveMouse(e.clientX); });
-game.addEventListener("touchmove", e=>{ moveMouse(e.touches[0].clientX); e.preventDefault(); }, {passive:false});
-
-// ====== アイテム落下 ======
-function dropItem(){
-    if(gameOver||paused) return;
-    const item=document.createElement("div"); item.className="item";
-    let rand=Math.random();
-    let isRare=rand<0.08;
-    let isCheese=!isRare && rand<0.46;
-
-    if(isRare){ item.style.backgroundImage=`url(${IMG_RARE})`; item.dataset.type="rare"; }
-    else if(isCheese){ item.style.backgroundImage=`url(${IMG_CHEESE})`; item.dataset.type="cheese"; }
-    else{ item.style.backgroundImage=`url(${IMG_WATER})`; item.dataset.type="water"; }
-
-    item.style.left=Math.floor(Math.random()*(game.clientWidth-40))+"px";
-    item.style.top="0px";
-    game.appendChild(item);
-
-    function fallStep(){
-        if(gameOver){ item.remove(); return; }
-        let top=parseInt(item.style.top);
-        if(top>game.clientHeight-30){ item.remove(); fallTimers=fallTimers.filter(f=>f!==fall); }
-        else{ item.style.top=(top+fallSpeed)+"px"; checkCollision(item,fall); }
-    }
-
-    const fall=setInterval(()=>{
-        if(paused){ clearInterval(fall); fallTimers=fallTimers.filter(f=>f!==fall); pausedItems.push(item); return; }
-        fallStep();
-    },30);
-    fallTimers.push(fall);
-}
-
-// ====== 衝突判定 ======
-function checkCollision(item,fall){
-    const iRect=item.getBoundingClientRect();
-    const bRect=basket.getBoundingClientRect();
-    if(!(iRect.right<bRect.left||iRect.left>bRect.right||iRect.bottom<bRect.top||iRect.top>bRect.bottom)){
-        if(item.dataset.type==="cheese"){ cheeseCount+=1; cheeseDisplay.textContent="チーズ:"+cheeseCount; }
-        else if(item.dataset.type==="rare"){
-            cheeseCount+=3; cheeseDisplay.textContent="チーズ:"+cheeseCount+"（レア！+3）";
-            const basketRect=basket.getBoundingClientRect();
-            const gameRect=game.getBoundingClientRect();
-            const cx=basketRect.left+basketRect.width/2-gameRect.left;
-            const cy=basketRect.top+basketRect.height/2-gameRect.top;
-            createParticleEffect(cx,cy);
-            setTimeout(()=>{ cheeseDisplay.textContent="チーズ:"+cheeseCount; },900);
-        } else { // 水
-            if(cheeseCount>0){ endGame("💧 チーズが入った状態で水に濡れた！カビてゲームオーバー"); }
-            else{ endGame("💧 水に濡れた！ゲームオーバー"); }
+        #game {
+            position: relative;
+            max-width: 400px;
+            height: 100vh;
+            width: 100vh;
+            margin: auto;
+            border: 2px solid #000;
+            overflow: hidden;
+            background-image: url("imgs/cheese_building.webp");
+            background-size: cover;
         }
-        clearInterval(fall); item.remove();
-    }
-}
 
-// ====== ゲーム終了 ======
-function endGame(text){
-    gameOver=true;
-    if(dropTimer) clearInterval(dropTimer); dropTimer=null;
-    fallTimers.forEach(f=>clearInterval(f)); fallTimers=[];
-    pausedItems=[];
-    windowFunc("gameover",text);
-}
+        .mouse {
+            position: absolute;
+            bottom: 10px;
+            width: 60px;
+            height: 60px;
+            background-size: cover;
+            background-position: center;
+        }
 
-// ====== 一時停止 ======
-pauseBtn.onclick=function(){
-    if(paused){
-        paused=false; pauseBtn.textContent="⏸ 一時停止";
-        if(!gameOver&&!dropTimer) dropTimer=setInterval(dropItem,dropInterval);
-        pausedItems.forEach(item=>{
-            function fallStep(){
-                if(gameOver){ item.remove(); return; }
-                let top=parseInt(item.style.top);
-                if(top>game.clientHeight-30){ item.remove(); fallTimers=fallTimers.filter(f=>f!==fall); }
-                else{ item.style.top=(top+fallSpeed)+"px"; checkCollision(item,fall); }
+        .basket {
+            position: absolute;
+            width: 70px;
+            height: 40px;
+            top: -35px;
+            left: -5px;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .item {
+            position: absolute;
+            width: 40px;
+            height: auto;
+            min-height: 40px;
+            background-size: cover;
+            background-position: center;
+            z-index: 10;
+        }
+
+        /* data-type="water" の場合 */
+        .item[data-type="water"] {
+            height: 70px;
+            /* 高さを70pxに固定（誤記修正） */
+        }
+
+        /* 虹色アイテムの見た目（画像なしでもOK） */
+        .item[data-type="rainbow"] {
+            min-height: 40px;
+            border-radius: 8px;
+            border: 2px solid #fff;
+            background: conic-gradient(#ff0080, #ff8c00, #ffd400, #22c55e, #06b6d4, #8b5cf6, #ff0080);
+            animation: spin 1.2s linear infinite;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(1turn);
             }
-            const fall=setInterval(()=>{ if(paused){ clearInterval(fall); fallTimers=fallTimers.filter(f=>f!==fall); pausedItems.push(item); return; } fallStep(); },30);
+        }
+
+        #cheeseCount {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 20px;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 4px 12px;
+            border-radius: 10px;
+            z-index: 11;
+        }
+
+        #statusBar {
+            position: absolute;
+            top: 50px;
+            right: 15px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 4px 10px;
+            border-radius: 8px;
+            z-index: 11;
+            display: none;
+        }
+
+        #pauseBtn {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            font-size: 18px;
+            padding: 4px 12px;
+            border-radius: 10px;
+            z-index: 0;
+            background: #ffe;
+            border: 1px solid #aaa;
+            cursor: pointer;
+        }
+
+        #window {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+            padding: 12px;
+            box-sizing: border-box;
+        }
+
+        #window button {
+            font-size: 18px;
+            padding: 8px 20px;
+            margin: 8px auto 0 auto;
+            display: block;
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        #window .start-btn {
+            background: #4caf50;
+            color: #fff;
+            font-size: 22px;
+            padding: 10px 28px;
+        }
+
+        #window .retry-btn {
+            background: #2196f3;
+            color: #fff;
+        }
+
+        #window .title-btn {
+            background: #ff9800;
+            color: #fff;
+        }
+
+        #window .diff-btn {
+            background: #888;
+            color: #fff;
+            margin-right: 10px;
+        }
+
+        #window .diff-btn.selected {
+            background: #333;
+        }
+
+        .shop {
+            width: 92%;
+            max-width: 360px;
+            margin: 6px auto 14px auto;
+            padding: 10px;
+            border-radius: 12px;
+            background: #fff;
+            border: 1px solid #ddd;
+        }
+
+        .shop h3 {
+            margin: 0 0 8px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .shop .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 6px 0;
+        }
+
+        .shop .row .info {
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.3;
+        }
+
+        .shop .row .buy {
+            white-space: nowrap;
+        }
+
+        .shop small {
+            color: #666;
+        }
+
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #7fdcff;
+            pointer-events: none;
+            opacity: 0.8;
+            z-index: 9999;
+            animation: particle-move 0.7s linear forwards;
+        }
+
+        @keyframes particle-move {
+            0% {
+                opacity: 0.8;
+                transform: scale(1) translateY(0);
+            }
+
+            80% {
+                opacity: 0.6;
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(0.5) translateY(-40px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game">
+        <div class="mouse" id="mouse">
+            <div class="basket" id="basket"></div>
+        </div>
+
+        <div id="window"></div>
+        <div id="cheeseCount">チーズ:0</div>
+        <div id="statusBar"></div>
+        <button id="pauseBtn">⏸ 一時停止</button>
+    </div>
+
+    <script>
+        // ====== 画像 ======
+        const IMG_MOUSE = "imgs/mouse-one.webp";
+        const IMG_BASKET = "imgs/mouse-archive.webp";
+        const IMG_CHEESE = "imgs/cheese.webp";
+        const IMG_RARE = "imgs/2.5Dcheese.webp";
+        const IMG_WATER = "imgs/drop.png";
+        // 虹色はCSS描画するため画像不要。画像を使いたいなら下のURLを設定して使う
+        const IMG_RAINBOW = null; // 例: "imgs/rainbow.webp"
+
+        // ====== DOM ======
+        const game = document.getElementById("game");
+        const mouse = document.getElementById("mouse");
+        const basket = document.getElementById("basket");
+        const cheeseDisplay = document.getElementById("cheeseCount");
+        const windowDiv = document.getElementById("window");
+        const pauseBtn = document.getElementById("pauseBtn");
+        const statusBar = document.getElementById("statusBar");
+
+        // ====== 進行状態（保存系） ======
+        const LS = {
+            coins: "nz_game_coins",
+            upRainbow: "nz_game_up_rainbow",
+            upRare: "nz_game_up_rare",
+            high: "nz_game_highscore",
+        };
+        let coins = parseInt(localStorage.getItem(LS.coins) || "0", 10);
+        let upRainbow = parseInt(localStorage.getItem(LS.upRainbow) || "0", 10); // +0.2%/Lv
+        let upRare = parseInt(localStorage.getItem(LS.upRare) || "0", 10);       // +0.5%/Lv
+        let highScore = parseInt(localStorage.getItem(LS.high) || "0", 10);
+
+        // ====== ゲーム状態 ======
+        let gameOver = false;
+        let cheeseCount = 0;
+        let dropTimer = null;
+        let paused = false;
+        let fallTimers = [];
+        let pausedItems = [];
+        let difficulty = "normal";
+        let dropInterval = 1000;
+        let fallSpeed = 6;
+
+        // 虹色バフ
+        const RAINBOW_DURATION = 15000; // 15秒
+        let rainbowUntil = 0;
+        let statusTimer = null;
+        let pausedAt = 0;
+
+        // 画像
+        mouse.style.backgroundImage = `url(${IMG_MOUSE})`;
+        basket.style.backgroundImage = `url(${IMG_BASKET})`;
+
+        // ====== 確率（強化反映） ======
+        function calcChances() {
+            // ベース確率
+            const base = {
+                rainbow: 0.01, // 1%
+                rare: 0.08,    // 8%
+                cheese: 0.46   // 46%
+            };
+            // 強化分を加算（上限は全体で 95% に収まるよう後で調整）
+            let pRainbow = base.rainbow + upRainbow * 0.002; // +0.2%/Lv
+            let pRare = base.rare + upRare * 0.005;          // +0.5%/Lv
+            let pCheese = base.cheese;                       // チーズは固定（強化は虹/レアのみ）
+
+            // 水の最低出現率を5%確保
+            const maxNonWater = 0.95;
+            let total = pRainbow + pRare + pCheese;
+            if (total > maxNonWater) {
+                const excess = total - maxNonWater;
+                const baseR = 0.01, baseRa = 0.08;
+                let extraR = Math.max(0, pRainbow - baseR);
+                let extraRa = Math.max(0, pRare - baseRa);
+                let extraSum = extraR + extraRa;
+                if (extraSum > 0) {
+                    const keep = Math.max(0, (extraSum - excess) / extraSum);
+                    pRainbow = baseR + extraR * keep;
+                    pRare = baseRa + extraRa * keep;
+                } else {
+                    // それでも溢れるならチーズを削る
+                    pCheese = Math.max(0, pCheese - excess);
+                }
+            }
+            return { pRainbow, pRare, pCheese };
+        }
+
+        // ====== ウィンドウ描画 ======
+        function windowFunc(type, message) {
+            windowDiv.innerHTML = "";
+            windowDiv.style.display = (type ? "flex" : "none");
+            if (!type) return;
+
+            if (type === "start") {
+                // タイトル
+                const title = document.createElement("div");
+                title.textContent = "ネズミとチーズ - タイトル";
+                title.style.fontSize = "24px";
+                title.style.marginBottom = "8px";
+                title.style.textAlign = "center";
+                windowDiv.appendChild(title);
+
+                // コイン/ハイスコア表示
+                const info = document.createElement("div");
+                info.style.textAlign = "center";
+                info.style.marginBottom = "8px";
+                info.innerHTML = `🪙 コイン: <b id="coinsSpan">${coins}</b>　/　🏆 ハイスコア: <b id="highSpan">${highScore}</b>`;
+                windowDiv.appendChild(info);
+
+                // ショップ
+                const shop = document.createElement("div");
+                shop.className = "shop";
+                const shopr = () => {
+                    shop.innerHTML = `
+          <h3>強化ショップ</h3>
+          <div class="row">
+            <div class="info">🌈 虹色（カラフル）アイテム出現率<br>
+              <small>現在: <b id="lvRainbow">${upRainbow}</b> Lv（+${(upRainbow * 0.2).toFixed(1)}%）</small>
+            </div>
+            <div class="buy">
+              <button id="buyRainbow">強化（<span id="costRainbow"></span>🪙）</button>
+            </div>
+          </div>
+          <div class="row">
+            <div class="info">🧀 レアチーズ出現率<br>
+              <small>現在: <b id="lvRare">${upRare}</b> Lv（+${(upRare * 0.5).toFixed(1)}%）</small>
+            </div>
+            <div class="buy">
+              <button id="buyRare">強化（<span id="costRare"></span>🪙）</button>
+            </div>
+          </div>
+          <small>※ セーブは自動（localStorage）</small>
+        `;
+                }
+                window.shopr = shopr;
+                shopr();
+                windowDiv.appendChild(shop);
+
+                // 難易度
+                const diffTitle = document.createElement("div");
+                diffTitle.textContent = "難易度を選んでスタート";
+                diffTitle.style.fontSize = "16px";
+                diffTitle.style.margin = "10px 0 4px";
+                diffTitle.style.textAlign = "center";
+                windowDiv.appendChild(diffTitle);
+
+                const diffDiv = document.createElement("div");
+                diffDiv.style.textAlign = "center";
+                diffDiv.innerHTML = `
+          <button class="diff-btn" id="easyBtn">やさしい</button>
+          <button class="diff-btn" id="normalBtn">ふつう</button>
+          <button class="diff-btn" id="hardBtn">むずかしい</button>
+        `;
+                windowDiv.appendChild(diffDiv);
+
+                const startBtn = document.createElement("button");
+                startBtn.textContent = "スタート";
+                startBtn.className = "start-btn";
+                windowDiv.appendChild(startBtn);
+
+                // セットアップ
+                setTimeout(() => {
+                    const easyBtn = document.getElementById("easyBtn");
+                    const normalBtn = document.getElementById("normalBtn");
+                    const hardBtn = document.getElementById("hardBtn");
+                    function select(btn) {
+                        [easyBtn, normalBtn, hardBtn].forEach(b => b.classList.remove("selected"));
+                        btn.classList.add("selected");
+                    }
+                    // 既定「ふつう」
+                    select(normalBtn);
+                    difficulty = "normal"; dropInterval = 1000; fallSpeed = 6;
+
+                    easyBtn.onclick = () => { difficulty = "easy"; dropInterval = 1300; fallSpeed = 4; select(easyBtn); };
+                    normalBtn.onclick = () => { difficulty = "normal"; dropInterval = 1000; fallSpeed = 6; select(normalBtn); };
+                    hardBtn.onclick = () => { difficulty = "hard"; dropInterval = 700; fallSpeed = 9; select(hardBtn); };
+
+                    // 強化コスト表示
+                    const costR = document.getElementById("costRainbow");
+                    const costRa = document.getElementById("costRare");
+                    costR.textContent = getUpgradeCost("rainbow", upRainbow);
+                    costRa.textContent = getUpgradeCost("rare", upRare);
+
+                    document.getElementById("buyRainbow").onclick = () => { buyUpgrade("rainbow"); };
+                    document.getElementById("buyRare").onclick = () => { buyUpgrade("rare"); };
+
+                    startBtn.onclick = () => { windowDiv.style.display = "none"; startGame(); };
+                }, 0);
+            }
+
+            if (type === "gameover") {
+                const msgDiv = document.createElement("div");
+                msgDiv.textContent = message;
+                msgDiv.style.fontSize = "20px";
+                msgDiv.style.marginBottom = "12px";
+                msgDiv.style.textAlign = "center";
+                windowDiv.appendChild(msgDiv);
+
+                const retryBtn = document.createElement("button");
+                retryBtn.textContent = "リトライ";
+                retryBtn.className = "retry-btn";
+                retryBtn.onclick = () => { windowDiv.style.display = "none"; startGame(); };
+                windowDiv.appendChild(retryBtn);
+
+                const titleBtn = document.createElement("button");
+                titleBtn.textContent = "タイトルに戻る";
+                titleBtn.className = "title-btn";
+                titleBtn.style.marginTop = "8px";
+                titleBtn.onclick = () => { location.reload(); };
+                windowDiv.appendChild(titleBtn);
+            }
+        }
+
+        // ====== 強化ロジック ======
+        function getUpgradeCost(type, level) {
+            // ゆるやかインフレ：初期やさしめ
+            // Lv0→5, 1→10, 2→20, 3→35, 4→55, 5→80, 以降 +30ずつ
+            const base = [5, 10, 20, 35, 55, 80];
+            const idx = Math.min(level, base.length - 1);
+            return base[idx] + Math.max(0, level - (base.length - 1)) * 30;
+        }
+
+        function buyUpgrade(type) {
+            let level = type === "rainbow" ? upRainbow : upRare;
+            const cost = getUpgradeCost(type, level);
+            if (coins < cost) {
+                showToast("🪙 コインが足りません");
+                return;
+            }
+
+            // コインを引く
+            coins -= cost;
+            localStorage.setItem(LS.coins, String(coins));
+            const coinsSpan = document.getElementById("coinsSpan");
+            if (coinsSpan) coinsSpan.textContent = coins;
+
+            // レベルアップ
+            if (type === "rainbow") {
+                upRainbow++;
+                localStorage.setItem(LS.upRainbow, String(upRainbow));
+                document.getElementById("lvRainbow").textContent = upRainbow;
+                document.getElementById("costRainbow").textContent = getUpgradeCost("rainbow", upRainbow);
+            } else {
+                upRare++;
+                localStorage.setItem(LS.upRare, String(upRare));
+                document.getElementById("lvRare").textContent = upRare;
+                document.getElementById("costRare").textContent = getUpgradeCost("rare", upRare);
+            }
+
+            // 表示リフレッシュは最後に
+            shopr();
+        }
+
+
+        // ====== リセット ======
+        function resetGame() {
+            gameOver = false;
+            cheeseCount = 0;
+            cheeseDisplay.textContent = "チーズ:" + cheeseCount;
+            document.querySelectorAll(".item").forEach(i => i.remove());
+            if (dropTimer) clearInterval(dropTimer);
+            dropTimer = null;
+            fallTimers.forEach(f => clearInterval(f));
+            fallTimers = [];
+            pausedItems = [];
+            paused = false;
+            pauseBtn.textContent = "⏸ 一時停止";
+            // バフもリセット
+            rainbowUntil = 0;
+            if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
+            statusBar.style.display = "none";
+            statusBar.textContent = "";
+        }
+
+        // ====== スタート ======
+        function startGame() {
+            resetGame();
+            windowFunc(); // hide
+            if (!dropTimer) dropTimer = setInterval(dropItem, dropInterval);
+        }
+
+        // ====== ネズミ移動 ======
+        function moveMouse(x) {
+            if (gameOver || paused) return;
+            const rect = game.getBoundingClientRect();
+            let nx = x - rect.left - mouse.offsetWidth / 2;
+            if (nx < 0) nx = 0;
+            if (nx > rect.width - mouse.offsetWidth) nx = rect.width - mouse.offsetWidth;
+            mouse.style.left = nx + "px";
+        }
+        game.addEventListener("mousemove", e => { moveMouse(e.clientX); });
+        game.addEventListener("touchmove", e => { moveMouse(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+
+        // ====== アイテム落下 ======
+        function dropItem() {
+            if (gameOver || paused) return;
+
+            const { pRainbow, pRare, pCheese } = calcChances();
+            const r = Math.random();
+
+            let type = "water";
+            if (r < pRainbow) type = "rainbow";
+            else if (r < pRainbow + pRare) type = "rare";
+            else if (r < pRainbow + pRare + pCheese) type = "cheese";
+            else type = "water";
+
+            // 虹色効果中は新しく落ちるものをすべてチーズ化
+            if (isRainbowActive()) type = "cheese";
+
+            const item = document.createElement("div");
+            item.className = "item";
+            item.dataset.type = type;
+
+            if (type === "cheese") item.style.backgroundImage = `url(${IMG_CHEESE})`;
+            if (type === "rare") item.style.backgroundImage = `url(${IMG_RARE})`;
+            if (type === "water") item.style.backgroundImage = `url(${IMG_WATER})`;
+            if (type === "rainbow") {
+                if (IMG_RAINBOW) item.style.backgroundImage = `url(${IMG_RAINBOW})`;
+                // 画像を使わない場合はCSSグラデで描画される
+            }
+
+            item.style.left = Math.floor(Math.random() * (game.clientWidth - 40)) + "px";
+            item.style.top = "0px";
+            game.appendChild(item);
+
+            function fallStep() {
+                if (gameOver) { item.remove(); return; }
+                let top = parseInt(item.style.top);
+                if (top > game.clientHeight - 30) {
+                    item.remove();
+                    fallTimers = fallTimers.filter(f => f !== fall);
+                } else {
+                    item.style.top = (top + fallSpeed) + "px";
+                    checkCollision(item, fall);
+                }
+            }
+
+            const fall = setInterval(() => {
+                if (paused) {
+                    clearInterval(fall);
+                    fallTimers = fallTimers.filter(f => f !== fall);
+                    pausedItems.push(item);
+                    return;
+                }
+                fallStep();
+            }, 30);
             fallTimers.push(fall);
+        }
+
+        // ====== 衝突判定 ======
+        function checkCollision(item, fall) {
+            const iRect = item.getBoundingClientRect();
+            const bRect = basket.getBoundingClientRect();
+            if (!(iRect.right < bRect.left || iRect.left > bRect.right || iRect.bottom < bRect.top || iRect.top > bRect.bottom)) {
+                const type = item.dataset.type;
+
+                if (type === "cheese") {
+                    cheeseCount += 1;
+                    cheeseDisplay.textContent = "チーズ:" + cheeseCount;
+                } else if (type === "rare") {
+                    cheeseCount += 3;
+                    cheeseDisplay.textContent = "チーズ:" + cheeseCount + "（レア！+3）";
+                    const basketRect = basket.getBoundingClientRect();
+                    const gameRect = game.getBoundingClientRect();
+                    const cx = basketRect.left + basketRect.width / 2 - gameRect.left;
+                    const cy = basketRect.top + basketRect.height / 2 - gameRect.top;
+                    createParticleEffect(cx, cy);
+                    setTimeout(() => { cheeseDisplay.textContent = "チーズ:" + cheeseCount; }, 900);
+                } else if (type === "rainbow") {
+                    triggerRainbowEffect();
+                    // 虹そのものは得点なし（好みに応じて +1 などにしてOK）
+                    showToast("🌈 15秒間、全部チーズになるよ！");
+                } else {
+                    // 水
+                    if (cheeseCount > 0 && !isRainbowActive()) {
+                        endGame("💧 チーズが入った状態で水に濡れた！カビてゲームオーバー");
+                    } else if (!isRainbowActive()) {
+                        endGame("💧 水に濡れた！ゲームオーバー");
+                    } else {
+                        // 虹効果中は水も怖くない（チーズ化して落ちてくる想定）
+                    }
+                }
+
+                clearInterval(fall);
+                item.remove();
+            }
+        }
+
+        // ====== 虹色バフ ======
+        function isRainbowActive() {
+            return Date.now() < rainbowUntil;
+        }
+
+        function triggerRainbowEffect() {
+            const now = Date.now();
+            rainbowUntil = Math.max(rainbowUntil, now) + RAINBOW_DURATION;
+            updateStatusBar();
+            if (statusTimer) clearInterval(statusTimer);
+            statusTimer = setInterval(updateStatusBar, 100);
+        }
+
+        function updateStatusBar() {
+            const remain = Math.max(0, rainbowUntil - Date.now());
+            if (remain > 0) {
+                statusBar.style.display = "block";
+                statusBar.textContent = `🌈 効果中: ${(remain / 1000).toFixed(1)}s`;
+            } else {
+                statusBar.style.display = "none";
+                statusBar.textContent = "";
+                if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
+            }
+        }
+
+        // ====== ゲーム終了 ======
+        function endGame(text) {
+            gameOver = true;
+            if (dropTimer) clearInterval(dropTimer);
+            dropTimer = null;
+            fallTimers.forEach(f => clearInterval(f));
+            fallTimers = [];
+            pausedItems = [];
+
+            // スコア保存＆コイン付与
+            if (cheeseCount > highScore) {
+                highScore = cheeseCount;
+                localStorage.setItem(LS.high, String(highScore));
+            }
+            const earned = Math.floor(cheeseCount / 2);
+            coins += earned;
+            localStorage.setItem(LS.coins, String(coins));
+
+            windowFunc("gameover", `${text}\n🧀 スコア: ${cheeseCount}　/　🪙 獲得: ${earned}（所持: ${coins}）\n🏆 最高記録: ${highScore}`);
+        }
+
+        // ====== 一時停止 ======
+        pauseBtn.onclick = function () {
+            if (paused) {
+                paused = false; pauseBtn.textContent = "⏸ 一時停止";
+                // 虹効果の残り時間をポーズ分だけ延長
+                if (pausedAt && rainbowUntil > pausedAt) {
+                    const delta = Date.now() - pausedAt;
+                    rainbowUntil += delta;
+                    pausedAt = 0;
+                    updateStatusBar();
+                }
+                if (!gameOver && !dropTimer) dropTimer = setInterval(dropItem, dropInterval);
+                pausedItems.forEach(item => {
+                    function fallStep() {
+                        if (gameOver) { item.remove(); return; }
+                        let top = parseInt(item.style.top);
+                        if (top > game.clientHeight - 30) { item.remove(); fallTimers = fallTimers.filter(f => f !== fall); }
+                        else { item.style.top = (top + fallSpeed) + "px"; checkCollision(item, fall); }
+                    }
+                    const fall = setInterval(() => {
+                        if (paused) { clearInterval(fall); fallTimers = fallTimers.filter(f => f !== fall); pausedItems.push(item); return; }
+                        fallStep();
+                    }, 30);
+                    fallTimers.push(fall);
+                });
+                pausedItems = [];
+            } else {
+                paused = true; pauseBtn.textContent = "▶ 再開";
+                pausedAt = Date.now();
+                if (dropTimer) { clearInterval(dropTimer); dropTimer = null; }
+                fallTimers.forEach(f => clearInterval(f));
+                fallTimers = [];
+                pausedItems = Array.from(document.querySelectorAll(".item"));
+            }
+        };
+
+        // ====== トースト的メッセージ ======
+        function showToast(msg) {
+            const div = document.createElement("div");
+            div.textContent = msg;
+            div.style.position = "absolute";
+            div.style.left = "50%";
+            div.style.top = "20%";
+            div.style.transform = "translate(-50%, -50%)";
+            div.style.background = "rgba(0,0,0,0.75)";
+            div.style.color = "#fff";
+            div.style.padding = "8px 14px";
+            div.style.borderRadius = "10px";
+            div.style.zIndex = 2000;
+            game.appendChild(div);
+            setTimeout(() => div.remove(), 1200);
+        }
+
+        // ====== パーティクル ======
+        function createParticleEffect(x, y) {
+            for (let i = 0; i < 12; i++) {
+                const p = document.createElement("div"); p.className = "particle";
+                const angle = Math.random() * 2 * Math.PI;
+                const dist = 30 + Math.random() * 30;
+                const dx = Math.cos(angle) * dist;
+                const dy = Math.sin(angle) * dist;
+                p.style.left = (x - 5) + "px"; p.style.top = (y - 5) + "px";
+                p.animate(
+                    [{ transform: `translate(0,0)`, opacity: 0.8 },
+                    { transform: `translate(${dx}px,${dy}px) scale(0.5)`, opacity: 0 }],
+                    { duration: 700, easing: "ease-out" }
+                );
+                setTimeout(() => { p.remove(); }, 700);
+                game.appendChild(p);
+            }
+        }
+        game.addEventListener("click", (event) => {
+            const rect = game.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            createParticleEffect(x, y);
         });
-        pausedItems=[];
-    } else {
-        paused=true; pauseBtn.textContent="▶ 再開";
-        if(dropTimer){ clearInterval(dropTimer); dropTimer=null; }
-        fallTimers.forEach(f=>clearInterval(f)); fallTimers=[];
-        pausedItems=Array.from(document.querySelectorAll(".item"));
-    }
-};
 
-// ====== パーティクル ======
-function createParticleEffect(x,y){
-    for(let i=0;i<12;i++){
-        const p=document.createElement("div"); p.className="particle";
-        const angle=Math.random()*2*Math.PI;
-        const dist=30+Math.random()*30;
-        const dx=Math.cos(angle)*dist;
-        const dy=Math.sin(angle)*dist;
-        p.style.left=(x-5)+"px"; p.style.top=(y-5)+"px";
-        p.animate([{transform:`translate(0,0)`,opacity:0.8},{transform:`translate(${dx}px,${dy}px) scale(0.5)`,opacity:0}], {duration:700,easing:"ease-out"});
-        setTimeout(()=>{ p.remove(); },700);
-        game.appendChild(p);
-    }
-}
-
-windowFunc("start"); // 最初にスタート表示
-</script>
+        // 初期ウィンドウ
+        windowFunc("start");
+    </script>
 </body>
+
 </html>
