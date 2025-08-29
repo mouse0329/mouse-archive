@@ -764,8 +764,34 @@
             mouse.style.left = nx + "px";
         }
 
+        // PC: マウス移動
         game.addEventListener("mousemove", e => { moveMouse(e.clientX); });
-        game.addEventListener("touchmove", e => { moveMouse(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+
+        // モバイル: タッチ移動
+        let lastTouchX = null;
+        game.addEventListener("touchstart", e => {
+            if (e.touches.length > 0) {
+                lastTouchX = e.touches[0].clientX;
+                moveMouse(lastTouchX);
+            }
+        }, { passive: false });
+        game.addEventListener("touchmove", e => {
+            if (e.touches.length > 0) {
+                // 画面外で指を動かしてもネズミが暴走しないように制限
+                const touch = e.touches[0];
+                let x = touch.clientX;
+                // 画面内のみに制限
+                const rect = game.getBoundingClientRect();
+                if (x < rect.left) x = rect.left;
+                if (x > rect.right) x = rect.right;
+                moveMouse(x);
+                lastTouchX = x;
+            }
+            e.preventDefault();
+        }, { passive: false });
+        game.addEventListener("touchend", e => {
+            lastTouchX = null;
+        });
 
         // ====== アイテム落下 ======
         function dropItem() {
