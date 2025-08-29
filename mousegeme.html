@@ -266,7 +266,7 @@
 <body>
     <div id="game">
         <!--TODO:ネズミがモバイルの時に行くバグ-->
-        <div class="mouse" id="mouse">
+        <div class="mouse" id="mouse" style="bottom:10px;left:0;">
             <div class="basket" id="basket"></div>
         </div>
 
@@ -762,6 +762,8 @@
             if (nx < 0) nx = 0;
             if (nx > game.clientWidth - mouse.offsetWidth) nx = game.clientWidth - mouse.offsetWidth;
             mouse.style.left = nx + "px";
+            // 底辺を常に維持
+            mouse.style.bottom = "10px";
         }
 
         // PC: マウス移動
