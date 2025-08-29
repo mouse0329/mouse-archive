@@ -266,8 +266,8 @@
 <body>
     <div id="game">
         <!--TODO:ネズミがモバイルの時に行くバグ-->
-        <div class="mouse" id="mouse" id="basket">
-            <div class="basket"></div>
+        <div class="mouse" id="mouse">
+            <div class="basket" id="basket"></div>
         </div>
 
         <div id="window"></div>
@@ -630,7 +630,7 @@
                     const costRa = document.getElementById("costRare");
                     costR.textContent = getUpgradeCost("rainbow", upRainbow);
                     costRa.textContent = getUpgradeCost("rare", upRare);
-                    //TODO:レベルアップのコストの表示が消えるバグとボタンが押せなくなるバグ
+
                     document.getElementById("buyRainbow").onclick = () => { buyUpgrade("rainbow"); };
                     document.getElementById("buyRare").onclick = () => { buyUpgrade("rare"); };
 
@@ -864,10 +864,10 @@
                 } else if (type === "rare") {
                     cheeseCount += 3;
                     cheeseDisplay.textContent = "チーズ:" + cheeseCount + "（レア！+3）";
-                    const basketRect = basket.getBoundingClientRect();
+                    const mouseRect = mouse.getBoundingClientRect();
                     const gameRect = game.getBoundingClientRect();
-                    const cx = basketRect.left + basketRect.width / 2 - gameRect.left;
-                    const cy = basketRect.top + basketRect.height / 2 - gameRect.top;
+                    const cx = mouseRect.left + mouseRect.width / 2 - gameRect.left;
+                    const cy = mouseRect.top + mouseRect.height / 2 - gameRect.top;
                     createParticleEffect(cx, cy);
                     setTimeout(() => { cheeseDisplay.textContent = "チーズ:" + cheeseCount; }, 900);
                 } else if (type === "rainbow") {
