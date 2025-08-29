@@ -231,11 +231,41 @@
                 transform: scale(0.5) translateY(-40px);
             }
         }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgb(255, 255, 255);
+            animation: fadeOut 2s forwards;
+            z-index: 999999;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 1秒はそのまま(不透明)、次の1秒で透明に */
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+            }
+
+            70% {
+                opacity: 1;
+            }
+
+            /* 1秒間キープ */
+            100% {
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div id="game">
+        <!--TODO:ネズミがモバイルの時に行くバグ-->
         <div class="mouse" id="mouse">
             <div class="basket" id="basket"></div>
         </div>
@@ -244,9 +274,118 @@
         <div id="cheeseCount">チーズ:0</div>
         <div id="statusBar"></div>
         <button id="pauseBtn">⏸ 一時停止</button>
+        <div class="overlay">
+            <img src="imgs/mouse-txt.webp" alt="ネズミのアイコン">
+        </div>
     </div>
 
+    <!-- 管理パネル/デバッグパネルを統合し、URLパラメータ debug または admin のときのみ表示 -->
+    <button id="adminBtn"
+        style="display:none;position:fixed;left:10px;bottom:10px;z-index:2001;font-size:14px;padding:4px 10px;border-radius:8px;">管理・デバッグ</button>
+    <div id="adminPanel"
+        style="display:none;position:fixed;left:10px;bottom:50px;z-index:2002;background:#fff;border:1px solid #aaa;padding:12px 16px;border-radius:12px;box-shadow:0 2px 8px #0002;max-width:360px;">
+        <div style="font-weight:bold;margin-bottom:6px;">管理・デバッグ設定</div>
+        <form id="adminForm">
+            <div style="margin-bottom:4px;">
+                <label>コイン <input type="number" min="0" id="dbg_coins" style="width:80px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>ハイスコア <input type="number" min="0" id="dbg_high" style="width:80px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>チーズ出現率 <input type="number" step="0.01" min="0" max="1" id="ap_cheese"
+                        style="width:60px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>レアチーズ出現率 <input type="number" step="0.01" min="0" max="1" id="ap_rare"
+                        style="width:60px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>虹出現率 <input type="number" step="0.01" min="0" max="1" id="ap_rainbow"
+                        style="width:60px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>水最低確率 <input type="number" step="0.01" min="0" max="1" id="ap_minWater"
+                        style="width:60px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>やさしい: 落下間隔(ms) <input type="number" min="100" max="5000" id="ap_easy_drop"
+                        style="width:60px;"></label>
+                <label>速度 <input type="number" min="1" max="50" id="ap_easy_speed" style="width:40px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>ふつう: 落下間隔(ms) <input type="number" min="100" max="5000" id="ap_normal_drop"
+                        style="width:60px;"></label>
+                <label>速度 <input type="number" min="1" max="50" id="ap_normal_speed" style="width:40px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>むずかしい: 落下間隔(ms) <input type="number" min="100" max="5000" id="ap_hard_drop"
+                        style="width:60px;"></label>
+                <label>速度 <input type="number" min="1" max="50" id="ap_hard_speed" style="width:40px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>虹コスト <input type="text" id="dbg_costRainbow" style="width:120px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>レアコスト <input type="text" id="dbg_costRare" style="width:120px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>虹バフ時間コスト <input type="text" id="dbg_costRainbowTime" style="width:120px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>虹チーズコスト <input type="text" id="dbg_costRainbowCheese" style="width:120px;"></label>
+            </div>
+            <button type="submit" style="margin-top:8px;">保存してリロード</button>
+            <button type="button" id="adminClose" style="margin-left:8px;">閉じる</button>
+            <button type="button" id="adminReset" style="margin-left:8px;">リセット</button>
+            <button type="button" id="adminExport" style="margin-left:8px;">JSON書き出し</button>
+            <label style="margin-left:8px;cursor:pointer;">
+                <input type="file" id="adminImport" accept="application/json" style="display:none;">
+                <span style="text-decoration:underline;color:#06c;">JSON読込</span>
+            </label>
+        </form>
+        <div style="font-size:12px;color:#888;margin-top:4px;">※編集はlocalStorageに保存されます</div>
+    </div>
+    <button id="debugBtn"
+        style="display:none;position:fixed;left:120px;bottom:10px;z-index:2001;font-size:14px;padding:4px 10px;border-radius:8px;">デバッグ</button>
+    <div id="debugPanel"
+        style="display:none;position:fixed;left:120px;bottom:50px;z-index:2002;background:#fff;border:1px solid #aaa;padding:12px 16px;border-radius:12px;box-shadow:0 2px 8px #0002;max-width:340px;">
+        <div style="font-weight:bold;margin-bottom:6px;">デバッグ設定</div>
+        <form id="debugForm">
+            <div style="margin-bottom:4px;">
+                <label>コイン <input type="number" min="0" id="dbg_coins" style="width:80px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>ハイスコア <input type="number" min="0" id="dbg_high" style="width:80px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>虹コスト <input type="text" id="dbg_costRainbow" style="width:120px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>レアコスト <input type="text" id="dbg_costRare" style="width:120px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>虹バフ時間コスト <input type="text" id="dbg_costRainbowTime" style="width:120px;"></label>
+            </div>
+            <div style="margin-bottom:4px;">
+                <label>虹チーズコスト <input type="text" id="dbg_costRainbowCheese" style="width:120px;"></label>
+            </div>
+            <button type="submit" style="margin-top:8px;">保存してリロード</button>
+            <button type="button" id="debugClose" style="margin-left:8px;">閉じる</button>
+            <button type="button" id="debugReset" style="margin-left:8px;">リセット</button>
+            <button type="button" id="debugExport" style="margin-left:8px;">JSON書き出し</button>
+            <label style="margin-left:8px;cursor:pointer;">
+                <input type="file" id="debugImport" accept="application/json" style="display:none;">
+                <span style="text-decoration:underline;color:#06c;">JSON読込</span>
+            </label>
+        </form>
+        <div style="font-size:12px;color:#888;margin-top:4px;">※編集はlocalStorageに保存されます</div>
+    </div>
     <script>
+        const overlay = document.querySelector('.overlay');
+        overlay.addEventListener('animationend', () => {
+            overlay.style.display = 'none'; // アニメーションが終わったら非表示
+        });
         // ====== 画像 ======
         const IMG_MOUSE = "imgs/mouse-one.webp";
         const IMG_BASKET = "imgs/mouse-archive.webp";
@@ -271,11 +410,15 @@
             upRainbow: "nz_game_up_rainbow",
             upRare: "nz_game_up_rare",
             high: "nz_game_highscore",
+            upRainbowTime: "nz_game_up_rainbow_time", // 虹時間強化
+            upRainbowCheese: "nz_game_up_rainbow_cheese", // 虹チーズ強化（追加）
         };
         let coins = parseInt(localStorage.getItem(LS.coins) || "0", 10);
         let upRainbow = parseInt(localStorage.getItem(LS.upRainbow) || "0", 10); // +0.2%/Lv
         let upRare = parseInt(localStorage.getItem(LS.upRare) || "0", 10);       // +0.5%/Lv
         let highScore = parseInt(localStorage.getItem(LS.high) || "0", 10);
+        let upRainbowTime = parseInt(localStorage.getItem(LS.upRainbowTime) || "0", 10); // +2秒/レベル
+        let upRainbowCheese = parseInt(localStorage.getItem(LS.upRainbowCheese) || "0", 10); // +1チーズ/レベル
 
         // ====== ゲーム状態 ======
         let gameOver = false;
@@ -291,6 +434,7 @@
         // 虹色バフ
         const RAINBOW_DURATION = 15000; // 15秒
         let rainbowUntil = 0;
+        let rainbowPausedRemain = 0; // 追加: ポーズ中の残り時間保存
         let statusTimer = null;
         let pausedAt = 0;
 
@@ -298,25 +442,58 @@
         mouse.style.backgroundImage = `url(${IMG_MOUSE})`;
         basket.style.backgroundImage = `url(${IMG_BASKET})`;
 
+        // ====== ゲームパラメータ集約 ======
+        const gameParams = {
+            cheese: {
+                baseChance: 0.46,
+            },
+            rare: {
+                baseChance: 0.08,
+                upPerLv: 0.005,
+                cost: [5, 10, 20, 35, 55, 80],
+                costStep: 30,
+            },
+            rainbow: {
+                baseChance: 0.01,
+                upPerLv: 0.002,
+                cost: [5, 10, 20, 35, 55, 80],
+                costStep: 30,
+            },
+            rainbowTime: {
+                baseSec: 5,
+                upSecPerLv: 2,
+                cost: [10, 20, 40, 70, 110, 160],
+                costStep: 50,
+            },
+            rainbowCheese: {
+                base: 0,
+                upPerLv: 1,
+                cost: [10, 20, 40, 70, 110, 160],
+                costStep: 50,
+            },
+            minWaterChance: 0.05,
+            difficulty: {
+                easy: { dropInterval: 1300, fallSpeed: 6 },
+                normal: { dropInterval: 1000, fallSpeed: 8 },
+                hard: { dropInterval: 700, fallSpeed: 18 }
+            }
+        };
+
         // ====== 確率（強化反映） ======
         function calcChances() {
-            // ベース確率
             const base = {
-                rainbow: 0.01, // 1%
-                rare: 0.08,    // 8%
-                cheese: 0.46   // 46%
+                rainbow: gameParams.rainbow.baseChance,
+                rare: gameParams.rare.baseChance,
+                cheese: gameParams.cheese.baseChance
             };
-            // 強化分を加算（上限は全体で 95% に収まるよう後で調整）
-            let pRainbow = base.rainbow + upRainbow * 0.002; // +0.2%/Lv
-            let pRare = base.rare + upRare * 0.005;          // +0.5%/Lv
-            let pCheese = base.cheese;                       // チーズは固定（強化は虹/レアのみ）
-
-            // 水の最低出現率を5%確保
-            const maxNonWater = 0.95;
+            let pRainbow = base.rainbow + upRainbow * gameParams.rainbow.upPerLv;
+            let pRare = base.rare + upRare * gameParams.rare.upPerLv;
+            let pCheese = base.cheese;
+            const maxNonWater = 1 - gameParams.minWaterChance;
             let total = pRainbow + pRare + pCheese;
             if (total > maxNonWater) {
                 const excess = total - maxNonWater;
-                const baseR = 0.01, baseRa = 0.08;
+                const baseR = gameParams.rainbow.baseChance, baseRa = gameParams.rare.baseChance;
                 let extraR = Math.max(0, pRainbow - baseR);
                 let extraRa = Math.max(0, pRare - baseRa);
                 let extraSum = extraR + extraRa;
@@ -325,7 +502,6 @@
                     pRainbow = baseR + extraR * keep;
                     pRare = baseRa + extraRa * keep;
                 } else {
-                    // それでも溢れるならチーズを削る
                     pCheese = Math.max(0, pCheese - excess);
                 }
             }
@@ -359,27 +535,54 @@
                 shop.className = "shop";
                 const shopr = () => {
                     shop.innerHTML = `
-          <h3>強化ショップ</h3>
-          <div class="row">
-            <div class="info">🌈 虹色（カラフル）アイテム出現率<br>
-              <small>現在: <b id="lvRainbow">${upRainbow}</b> Lv（+${(upRainbow * 0.2).toFixed(1)}%）</small>
-            </div>
-            <div class="buy">
-              <button id="buyRainbow">強化（<span id="costRainbow"></span>🪙）</button>
-            </div>
-          </div>
-          <div class="row">
-            <div class="info">🧀 レアチーズ出現率<br>
-              <small>現在: <b id="lvRare">${upRare}</b> Lv（+${(upRare * 0.5).toFixed(1)}%）</small>
-            </div>
-            <div class="buy">
-              <button id="buyRare">強化（<span id="costRare"></span>🪙）</button>
-            </div>
-          </div>
-          <small>※ セーブは自動（localStorage）</small>
-        `;
-                }
-                window.shopr = shopr;
+      <h3>強化ショップ</h3>
+      <div class="row">
+        <div class="info">🌈 虹色（カラフル）アイテム出現率<br>
+          <small>現在: <b id="lvRainbow">${upRainbow}</b> Lv（+${(upRainbow * 0.2).toFixed(1)}%）</small>
+        </div>
+        <div class="buy">
+          <button id="buyRainbow">強化（<span id="costRainbow"></span>🪙）</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="info">🧀 レアチーズ出現率<br>
+          <small>現在: <b id="lvRare">${upRare}</b> Lv（+${(upRare * 0.5).toFixed(1)}%）</small>
+        </div>
+        <div class="buy">
+          <button id="buyRare">強化（<span id="costRare"></span>🪙）</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="info">🌈 虹バフ効果時間<br>
+          <small>現在: <b id="lvRainbowTime">${upRainbowTime}</b> Lv（${5 + upRainbowTime * 2}秒）</small>
+        </div>
+        <div class="buy">
+          <button id="buyRainbowTime">強化（<span id="costRainbowTime"></span>🪙）</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="info">🌈 虹アイテム取得時チーズ<br>
+          <small>現在: <b id="lvRainbowCheese">${upRainbowCheese}</b> Lv（+${upRainbowCheese}）</small>
+        </div>
+        <div class="buy">
+          <button id="buyRainbowCheese">強化（<span id="costRainbowCheese"></span>🪙）</button>
+        </div>
+      </div>
+      <small>※ セーブは自動（localStorage）</small>
+    `;
+                    const costR = shop.querySelector("#costRainbow");
+                    const costRa = shop.querySelector("#costRare");
+                    const costRT = shop.querySelector("#costRainbowTime");
+                    const costRC = shop.querySelector("#costRainbowCheese");
+                    costR.textContent = getUpgradeCost("rainbow", upRainbow);
+                    costRa.textContent = getUpgradeCost("rare", upRare);
+                    costRT.textContent = getUpgradeCost("rainbowTime", upRainbowTime);
+                    costRC.textContent = getUpgradeCost("rainbowCheese", upRainbowCheese);
+                    shop.querySelector("#buyRainbow").onclick = () => { buyUpgrade("rainbow"); };
+                    shop.querySelector("#buyRare").onclick = () => { buyUpgrade("rare"); };
+                    shop.querySelector("#buyRainbowTime").onclick = () => { buyUpgrade("rainbowTime"); };
+                    shop.querySelector("#buyRainbowCheese").onclick = () => { buyUpgrade("rainbowCheese"); };
+                };
                 shopr();
                 windowDiv.appendChild(shop);
 
@@ -418,16 +621,16 @@
                     select(normalBtn);
                     difficulty = "normal"; dropInterval = 1000; fallSpeed = 6;
 
-                    easyBtn.onclick = () => { difficulty = "easy"; dropInterval = 1300; fallSpeed = 4; select(easyBtn); };
-                    normalBtn.onclick = () => { difficulty = "normal"; dropInterval = 1000; fallSpeed = 6; select(normalBtn); };
-                    hardBtn.onclick = () => { difficulty = "hard"; dropInterval = 700; fallSpeed = 9; select(hardBtn); };
+                    easyBtn.onclick = () => { difficulty = "easy"; dropInterval = gameParams.difficulty.easy.dropInterval; fallSpeed = gameParams.difficulty.easy.fallSpeed; select(easyBtn); };
+                    normalBtn.onclick = () => { difficulty = "normal"; dropInterval = gameParams.difficulty.normal.dropInterval; fallSpeed = gameParams.difficulty.normal.fallSpeed; select(normalBtn); };
+                    hardBtn.onclick = () => { difficulty = "hard"; dropInterval = gameParams.difficulty.hard.dropInterval; fallSpeed = gameParams.difficulty.hard.fallSpeed; select(hardBtn); };
 
                     // 強化コスト表示
                     const costR = document.getElementById("costRainbow");
                     const costRa = document.getElementById("costRare");
                     costR.textContent = getUpgradeCost("rainbow", upRainbow);
                     costRa.textContent = getUpgradeCost("rare", upRare);
-
+                    //TODO:レベルアップのコストの表示が消えるバグとボタンが押せなくなるバグ
                     document.getElementById("buyRainbow").onclick = () => { buyUpgrade("rainbow"); };
                     document.getElementById("buyRare").onclick = () => { buyUpgrade("rare"); };
 
@@ -460,42 +663,67 @@
 
         // ====== 強化ロジック ======
         function getUpgradeCost(type, level) {
-            // ゆるやかインフレ：初期やさしめ
-            // Lv0→5, 1→10, 2→20, 3→35, 4→55, 5→80, 以降 +30ずつ
-            const base = [5, 10, 20, 35, 55, 80];
-            const idx = Math.min(level, base.length - 1);
-            return base[idx] + Math.max(0, level - (base.length - 1)) * 30;
+            if (type === "rainbow") {
+                const base = gameParams.rainbow.cost;
+                const idx = Math.min(level, base.length - 1);
+                return base[idx] + Math.max(0, level - (base.length - 1)) * gameParams.rainbow.costStep;
+            }
+            if (type === "rare") {
+                const base = gameParams.rare.cost;
+                const idx = Math.min(level, base.length - 1);
+                return base[idx] + Math.max(0, level - (base.length - 1)) * gameParams.rare.costStep;
+            }
+            if (type === "rainbowTime") {
+                const base = gameParams.rainbowTime.cost;
+                const idx = Math.min(level, base.length - 1);
+                return base[idx] + Math.max(0, level - (base.length - 1)) * gameParams.rainbowTime.costStep;
+            }
+            if (type === "rainbowCheese") {
+                const base = gameParams.rainbowCheese.cost;
+                const idx = Math.min(level, base.length - 1);
+                return base[idx] + Math.max(0, level - (base.length - 1)) * gameParams.rainbowCheese.costStep;
+            }
+            return 0;
         }
 
         function buyUpgrade(type) {
-            let level = type === "rainbow" ? upRainbow : upRare;
+            let level;
+            if (type === "rainbow") level = upRainbow;
+            else if (type === "rare") level = upRare;
+            else if (type === "rainbowTime") level = upRainbowTime;
+            else if (type === "rainbowCheese") level = upRainbowCheese;
             const cost = getUpgradeCost(type, level);
             if (coins < cost) {
                 showToast("🪙 コインが足りません");
                 return;
             }
-
-            // コインを引く
             coins -= cost;
             localStorage.setItem(LS.coins, String(coins));
             const coinsSpan = document.getElementById("coinsSpan");
             if (coinsSpan) coinsSpan.textContent = coins;
 
-            // レベルアップ
             if (type === "rainbow") {
                 upRainbow++;
                 localStorage.setItem(LS.upRainbow, String(upRainbow));
                 document.getElementById("lvRainbow").textContent = upRainbow;
                 document.getElementById("costRainbow").textContent = getUpgradeCost("rainbow", upRainbow);
-            } else {
+            } else if (type === "rare") {
                 upRare++;
                 localStorage.setItem(LS.upRare, String(upRare));
                 document.getElementById("lvRare").textContent = upRare;
                 document.getElementById("costRare").textContent = getUpgradeCost("rare", upRare);
+            } else if (type === "rainbowTime") {
+                upRainbowTime++;
+                localStorage.setItem(LS.upRainbowTime, String(upRainbowTime));
+                document.getElementById("lvRainbowTime").textContent = upRainbowTime;
+                document.getElementById("costRainbowTime").textContent = getUpgradeCost("rainbowTime", upRainbowTime);
+            } else if (type === "rainbowCheese") {
+                upRainbowCheese++;
+                localStorage.setItem(LS.upRainbowCheese, String(upRainbowCheese));
+                document.getElementById("lvRainbowCheese").textContent = upRainbowCheese;
+                document.getElementById("costRainbowCheese").textContent = getUpgradeCost("rainbowCheese", upRainbowCheese);
             }
-
-            // 表示リフレッシュは最後に
-            shopr();
+            windowFunc("start");
         }
 
 
@@ -529,9 +757,10 @@
         // ====== ネズミ移動 ======
         function moveMouse(x) {
             const rect = game.getBoundingClientRect();
+            // 修正: game.clientWidthで範囲制限
             let nx = x - rect.left - mouse.offsetWidth / 2;
             if (nx < 0) nx = 0;
-            if (nx > rect.width - mouse.offsetWidth) nx = rect.width - mouse.offsetWidth;
+            if (nx > game.clientWidth - mouse.offsetWidth) nx = game.clientWidth - mouse.offsetWidth;
             mouse.style.left = nx + "px";
         }
 
@@ -634,13 +863,28 @@
         }
 
         // ====== 虹色バフ ======
+        // RAINBOW_DURATIONは使わず、関数で計算
+        function getRainbowDuration() {
+            return (gameParams.rainbowTime.baseSec + upRainbowTime * gameParams.rainbowTime.upSecPerLv) * 1000;
+        }
+
         function isRainbowActive() {
             return Date.now() < rainbowUntil;
         }
 
         function triggerRainbowEffect() {
             const now = Date.now();
-            rainbowUntil = Math.max(rainbowUntil, now) + RAINBOW_DURATION;
+            // 修正: 強化分の秒数を反映
+            rainbowUntil = Math.max(rainbowUntil, now) + getRainbowDuration();
+
+            // --- 虹チーズ強化レベルに応じてチーズ加算 ---
+            if (upRainbowCheese > 0) {
+                const addCheese = upRainbowCheese; // 1レベルごとに+1チーズ
+                cheeseCount += addCheese;
+                cheeseDisplay.textContent = `チーズ:${cheeseCount}（虹！+${addCheese}）`;
+                setTimeout(() => { cheeseDisplay.textContent = "チーズ:" + cheeseCount; }, 900);
+            }
+
             updateStatusBar();
             if (statusTimer) clearInterval(statusTimer);
             statusTimer = setInterval(updateStatusBar, 100);
@@ -683,11 +927,10 @@
         pauseBtn.onclick = function () {
             if (paused) {
                 paused = false; pauseBtn.textContent = "⏸ 一時停止";
-                // 虹効果の残り時間をポーズ分だけ延長
-                if (pausedAt && rainbowUntil > pausedAt) {
-                    const delta = Date.now() - pausedAt;
-                    rainbowUntil += delta;
-                    pausedAt = 0;
+                // ポーズ解除時、虹タイマーを復元
+                if (rainbowPausedRemain > 0) {
+                    rainbowUntil = Date.now() + rainbowPausedRemain;
+                    rainbowPausedRemain = 0;
                     updateStatusBar();
                 }
                 if (!gameOver && !dropTimer) dropTimer = setInterval(dropItem, dropInterval);
@@ -712,6 +955,12 @@
                 fallTimers.forEach(f => clearInterval(f));
                 fallTimers = [];
                 pausedItems = Array.from(document.querySelectorAll(".item"));
+                // ポーズ時、虹タイマーの残り時間を保存し、虹タイマーを止める
+                if (isRainbowActive()) {
+                    rainbowPausedRemain = rainbowUntil - Date.now();
+                    rainbowUntil = 0;
+                    updateStatusBar();
+                }
             }
         };
 
@@ -756,6 +1005,195 @@
             const y = event.clientY - rect.top;
             createParticleEffect(x, y);
         });
+
+        // 管理パネルはURLパラメータ debug または admin のときのみ表示
+        function getUrlParam(name) {
+            return new URLSearchParams(window.location.search).has(name);
+        }
+        if (getUrlParam("debug") || getUrlParam("admin")) {
+            document.getElementById("adminBtn").style.display = "block";
+        }
+
+        // 管理パネルUIのイベント
+        document.getElementById("adminBtn").onclick = function () {
+            const panel = document.getElementById("adminPanel");
+            panel.style.display = (panel.style.display === "none" ? "block" : "none");
+            // 値をセット
+            document.getElementById("dbg_coins").value = coins;
+            document.getElementById("dbg_high").value = highScore;
+            document.getElementById("ap_cheese").value = gameParams.cheese.baseChance;
+            document.getElementById("ap_rare").value = gameParams.rare.baseChance;
+            document.getElementById("ap_rainbow").value = gameParams.rainbow.baseChance;
+            document.getElementById("ap_minWater").value = gameParams.minWaterChance;
+            document.getElementById("ap_easy_drop").value = gameParams.difficulty.easy.dropInterval;
+            document.getElementById("ap_easy_speed").value = gameParams.difficulty.easy.fallSpeed;
+            document.getElementById("ap_normal_drop").value = gameParams.difficulty.normal.dropInterval;
+            document.getElementById("ap_normal_speed").value = gameParams.difficulty.normal.fallSpeed;
+            document.getElementById("ap_hard_drop").value = gameParams.difficulty.hard.dropInterval;
+            document.getElementById("ap_hard_speed").value = gameParams.difficulty.hard.fallSpeed;
+            document.getElementById("dbg_costRainbow").value = (gameParams.rainbow.cost || []).join(",");
+            document.getElementById("dbg_costRare").value = (gameParams.rare.cost || []).join(",");
+            document.getElementById("dbg_costRainbowTime").value = (gameParams.rainbowTime.cost || []).join(",");
+            document.getElementById("dbg_costRainbowCheese").value = (gameParams.rainbowCheese.cost || []).join(",");
+        };
+        document.getElementById("adminClose").onclick = function () {
+            document.getElementById("adminPanel").style.display = "none";
+        };
+        document.getElementById("adminReset").onclick = function () {
+            localStorage.removeItem("nz_game_coins");
+            localStorage.removeItem("nz_game_highscore");
+            localStorage.removeItem("nz_gameParams_cost_override");
+            localStorage.removeItem("nz_gameParams_override");
+            location.reload();
+        };
+        document.getElementById("adminForm").onsubmit = function (e) {
+            e.preventDefault();
+            // コイン・ハイスコア
+            localStorage.setItem("nz_game_coins", document.getElementById("dbg_coins").value);
+            localStorage.setItem("nz_game_highscore", document.getElementById("dbg_high").value);
+            // gameParams
+            const obj = {
+                cheese: parseFloat(document.getElementById("ap_cheese").value),
+                rare: parseFloat(document.getElementById("ap_rare").value),
+                rainbow: parseFloat(document.getElementById("ap_rainbow").value),
+                minWaterChance: parseFloat(document.getElementById("ap_minWater").value),
+                difficulty: {
+                    easy: {
+                        dropInterval: parseInt(document.getElementById("ap_easy_drop").value, 10),
+                        fallSpeed: parseInt(document.getElementById("ap_easy_speed").value, 10)
+                    },
+                    normal: {
+                        dropInterval: parseInt(document.getElementById("ap_normal_drop").value, 10),
+                        fallSpeed: parseInt(document.getElementById("ap_normal_speed").value, 10)
+                    },
+                    hard: {
+                        dropInterval: parseInt(document.getElementById("ap_hard_drop").value, 10),
+                        fallSpeed: parseInt(document.getElementById("ap_hard_speed").value, 10)
+                    }
+                }
+            };
+            localStorage.setItem("nz_gameParams_override", JSON.stringify(obj));
+            // コスト
+            const costOverride = {
+                rainbow: (document.getElementById("dbg_costRainbow").value || "").split(",").map(Number),
+                rare: (document.getElementById("dbg_costRare").value || "").split(",").map(Number),
+                rainbowTime: (document.getElementById("dbg_costRainbowTime").value || "").split(",").map(Number),
+                rainbowCheese: (document.getElementById("dbg_costRainbowCheese").value || "").split(",").map(Number)
+            };
+            localStorage.setItem("nz_gameParams_cost_override", JSON.stringify(costOverride));
+            alert("保存しました。ページをリロードします。");
+            location.reload();
+        };
+
+        // --- 管理パネル JSON書き出し/読込 ---
+        document.getElementById("adminExport").onclick = function () {
+            const obj = {
+                coins: document.getElementById("dbg_coins").value,
+                high: document.getElementById("dbg_high").value,
+                cheese: parseFloat(document.getElementById("ap_cheese").value),
+                rare: parseFloat(document.getElementById("ap_rare").value),
+                rainbow: parseFloat(document.getElementById("ap_rainbow").value),
+                minWaterChance: parseFloat(document.getElementById("ap_minWater").value),
+                difficulty: {
+                    easy: {
+                        dropInterval: parseInt(document.getElementById("ap_easy_drop").value, 10),
+                        fallSpeed: parseInt(document.getElementById("ap_easy_speed").value, 10)
+                    },
+                    normal: {
+                        dropInterval: parseInt(document.getElementById("ap_normal_drop").value, 10),
+                        fallSpeed: parseInt(document.getElementById("ap_normal_speed").value, 10)
+                    },
+                    hard: {
+                        dropInterval: parseInt(document.getElementById("ap_hard_drop").value, 10),
+                        fallSpeed: parseInt(document.getElementById("ap_hard_speed").value, 10)
+                    }
+                },
+                costRainbow: document.getElementById("dbg_costRainbow").value,
+                costRare: document.getElementById("dbg_costRare").value,
+                costRainbowTime: document.getElementById("dbg_costRainbowTime").value,
+                costRainbowCheese: document.getElementById("dbg_costRainbowCheese").value
+            };
+            const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "adminParams.json";
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        };
+        document.getElementById("adminImport").onchange = function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                try {
+                    const obj = JSON.parse(ev.target.result);
+                    if (obj.coins !== undefined) localStorage.setItem("nz_game_coins", obj.coins);
+                    if (obj.high !== undefined) localStorage.setItem("nz_game_highscore", obj.high);
+                    // gameParams
+                    const paramsObj = {
+                        cheese: obj.cheese,
+                        rare: obj.rare,
+                        rainbow: obj.rainbow,
+                        minWaterChance: obj.minWaterChance,
+                        difficulty: obj.difficulty
+                    };
+                    localStorage.setItem("nz_gameParams_override", JSON.stringify(paramsObj));
+                    // コスト
+                    const costOverride = {
+                        rainbow: (obj.costRainbow || "").split(",").map(Number),
+                        rare: (obj.costRare || "").split(",").map(Number),
+                        rainbowTime: (obj.costRainbowTime || "").split(",").map(Number),
+                        rainbowCheese: (obj.costRainbowCheese || "").split(",").map(Number)
+                    };
+                    localStorage.setItem("nz_gameParams_cost_override", JSON.stringify(costOverride));
+                    alert("読込完了。ページをリロードします。");
+                    location.reload();
+                } catch (err) {
+                    alert("JSON読込失敗");
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        // --- gameParams/コスト上書き反映 ---
+        (function applyAdminParams() {
+            const raw = localStorage.getItem("nz_gameParams_override");
+            if (raw) {
+                try {
+                    const obj = JSON.parse(raw);
+                    if (obj.cheese) gameParams.cheese.baseChance = obj.cheese;
+                    if (obj.rare) gameParams.rare.baseChance = obj.rare;
+                    if (obj.rainbow) gameParams.rainbow.baseChance = obj.rainbow;
+                    if (obj.minWaterChance) gameParams.minWaterChance = obj.minWaterChance;
+                    if (obj.difficulty) {
+                        if (obj.difficulty.easy) {
+                            if (obj.difficulty.easy.dropInterval) gameParams.difficulty.easy.dropInterval = obj.difficulty.easy.dropInterval;
+                            if (obj.difficulty.easy.fallSpeed) gameParams.difficulty.easy.fallSpeed = obj.difficulty.easy.fallSpeed;
+                        }
+                        if (obj.difficulty.normal) {
+                            if (obj.difficulty.normal.dropInterval) gameParams.difficulty.normal.dropInterval = obj.difficulty.normal.dropInterval;
+                            if (obj.difficulty.normal.fallSpeed) gameParams.difficulty.normal.fallSpeed = obj.difficulty.normal.fallSpeed;
+                        }
+                        if (obj.difficulty.hard) {
+                            if (obj.difficulty.hard.dropInterval) gameParams.difficulty.hard.dropInterval = obj.difficulty.hard.dropInterval;
+                            if (obj.difficulty.hard.fallSpeed) gameParams.difficulty.hard.fallSpeed = obj.difficulty.hard.fallSpeed;
+                        }
+                    }
+                } catch (e) { }
+            }
+            const rawCost = localStorage.getItem("nz_gameParams_cost_override");
+            if (rawCost) {
+                try {
+                    const obj = JSON.parse(rawCost);
+                    if (obj.rainbow) gameParams.rainbow.cost = obj.rainbow;
+                    if (obj.rare) gameParams.rare.cost = obj.rare;
+                    if (obj.rainbowTime) gameParams.rainbowTime.cost = obj.rainbowTime;
+                    if (obj.rainbowCheese) gameParams.rainbowCheese.cost = obj.rainbowCheese;
+                } catch (e) { }
+            }
+        })();
 
         // 初期ウィンドウ
         windowFunc("start");

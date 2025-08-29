@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ネズミの黒目追従チュー</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background: #ffe4b5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ラッパーで中央固定＆左右反転 */
+        #mouse-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scaleX(-1);
+            width: 500px;
+            /* ネズミ全体サイズ */
+            height: auto;
+        }
+
+        #mouse-wrapper img {
+            position: absolute;
+            pointer-events: none;
+        }
+
+        /* 尻尾 */
+        .tail {
+            width: 100px;
+            top: 60%;
+            left: 50%;
+            z-index: 0;
+        }
+
+        /* 耳 */
+        .ear {
+            width: 80px;
+            top: 40%;
+            left: 50%;
+            z-index: 0;
+        }
+
+        /* 体 */
+        .mouse-body {
+            width: 500px;
+            top: 50%;
+            left: 0%;
+            z-index: 1;
+        }
+
+        /* 黒目 */
+        .pupil {
+            width: 30px;
+            height: 30px;
+            top: 50%;
+            left: 45%;
+            /* 初期位置微調整 */
+            z-index: 2;
+            transform: translate(-50%, -50%);
+            transition: transform 0.05s;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="mouse-wrapper">
+        <img src="imgs/mouse-tail-long.webp" alt="尻尾" class="tail">
+        <img src="imgs/mouse-ear.webp" alt="耳" class="ear">
+        <img src="imgs/body.webp" alt="ネズミの体" class="mouse-body">
+        <img src="imgs/mouse-eye.webp" alt="黒目" class="pupil">
+    </div>
+
+    <script>
+        const wrapper = document.getElementById('mouse-wrapper');
+        const pupil = document.querySelector('.pupil');
+        const radius = 10; // 黒目の最大移動半径10px
+
+        function movePupil(event) {
+            const rect = wrapper.getBoundingClientRect(); // ラッパー基準
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            const touches = event.touches ? event.touches : [event];
+            let closest = touches[0];
+            let minDist = Infinity;
+
+            touches.forEach(touch => {
+                const dx = touch.clientX - centerX;
+                const dy = touch.clientY - centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = touch;
+                }
+            });
+
+            const dx = closest.clientX - centerX;
+            const dy = closest.clientY - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+            const limitedDistance = Math.min(distance, radius);
+
+            pupil.style.transform = `translate(calc(-50% + ${limitedDistance * Math.cos(angle)}px), calc(-50% + ${limitedDistance * Math.sin(angle)}px))`;
+        }
+
+        document.addEventListener('mousemove', movePupil);
+        document.addEventListener('touchmove', movePupil);
+
+        // 画面リサイズでもラッパー中央固定
+        window.addEventListener('resize', () => {
+            wrapper.style.top = `${window.innerHeight / 2}px`;
+            wrapper.style.left = `${window.innerWidth / 2}px`;
+        });
+    </script>
+
+</body>
+
+</html>
