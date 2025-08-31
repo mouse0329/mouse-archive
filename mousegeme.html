@@ -4,7 +4,28 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ネズミとチーズゲーム</title>
+
+    <!-- タイトルは検索に強くする -->
+    <title>ネズミとチーズゲーム｜無料で遊べるブラウザゲーム</title>
+
+    <!-- ページの説明文（検索結果に出る） -->
+    <meta name="description" content="ネズミを操作してチーズを集める無料ブラウザゲーム！スマホやPCで手軽に遊べる、かわいい暇つぶしゲームです。">
+
+    <!-- キーワード（最近は効果薄いけど一応） -->
+    <meta name="keywords" content="ネズミ,チーズ,ゲーム,無料,ブラウザ,暇つぶし,かわいい">
+
+    <!-- OGP（SNSシェア時のカード表示） -->
+    <meta property="og:title" content="ネズミとチーズゲーム｜無料で遊べるブラウザゲーム">
+    <meta property="og:description" content="かわいいネズミを動かしてチーズをキャッチ！スマホでもPCでも無料で遊べるブラウザゲーム。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://example.com/game">
+    <meta property="og:image" content="https://example.com/imgs/ogp-cheese.png">
+
+    <!-- Twitterカード -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ネズミとチーズゲーム">
+    <meta name="twitter:description" content="チーズを集めるかわいい無料ブラウザゲーム！">
+    <meta name="twitter:image" content="https://example.com/imgs/ogp-cheese.png">
     <style>
         body {
             margin: 0;
@@ -263,6 +284,7 @@
     </style>
 </head>
 
+
 <body>
     <div id="game">
         <!--TODO:ネズミがモバイルの時に行くバグ-->
@@ -380,6 +402,21 @@
         </form>
         <div style="font-size:12px;color:#888;margin-top:4px;">※編集はlocalStorageに保存されます</div>
     </div>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  "name": "ネズミとチーズゲーム",
+  "genre": "カジュアルゲーム",
+  "playMode": "SinglePlayer",
+  "applicationCategory": "Game",
+  "operatingSystem": "Web",
+  "description": "ネズミを動かしてチーズを集める無料ブラウザゲーム。スマホやPCで遊べます。",
+  "url": "https://example.com/game",
+  "image": "https://example.com/imgs/ogp-cheese.png"
+}
+</script>
+
     <script>
         const overlay = document.querySelector('.overlay');
         overlay.addEventListener('animationend', () => {
