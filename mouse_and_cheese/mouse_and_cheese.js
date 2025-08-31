@@ -3,13 +3,13 @@ overlay.addEventListener('animationend', () => {
     overlay.style.display = 'none'; // アニメーションが終わったら非表示
 });
 // ====== 画像 ======
-const IMG_MOUSE = "imgs/mouse-box.webp";
-const IMG_BASKET = "imgs/mouse-archive.webp";
-const IMG_CHEESE = "imgs/cheese.webp";
-const IMG_RARE = "imgs/2.5Dcheese.webp";
-const IMG_WATER = "imgs/drop.png";
+const IMG_MOUSE = "/imgs/mouse-box.webp";
+const IMG_BASKET = "/imgs/mouse-archive.webp";
+const IMG_CHEESE = "/imgs/cheese.webp";
+const IMG_RARE = "/imgs/2.5Dcheese.webp";
+const IMG_WATER = "/imgs/drop.png";
 // 虹色はCSS描画するため画像不要。画像を使いたいなら下のURLを設定して使う
-const IMG_RAINBOW = null; // 例: "imgs/rainbow.webp"
+const IMG_RAINBOW = null; // 例: "/imgs/rainbow.webp"
 
 // ====== DOM ======
 const game = document.getElementById("game");
