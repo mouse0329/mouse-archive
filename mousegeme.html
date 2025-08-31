@@ -27,8 +27,8 @@
         .mouse {
             position: absolute;
             bottom: 10px;
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 100px;
             background-size: cover;
             background-position: center;
         }
@@ -267,7 +267,6 @@
     <div id="game">
         <!--TODO:ネズミがモバイルの時に行くバグ-->
         <div class="mouse" id="mouse">
-            <div class="basket" id="basket"></div>
         </div>
 
         <div id="window"></div>
@@ -387,7 +386,7 @@
             overlay.style.display = 'none'; // アニメーションが終わったら非表示
         });
         // ====== 画像 ======
-        const IMG_MOUSE = "imgs/mouse-one.webp";
+        const IMG_MOUSE = "imgs/mouse-box.webp";
         const IMG_BASKET = "imgs/mouse-archive.webp";
         const IMG_CHEESE = "imgs/cheese.webp";
         const IMG_RARE = "imgs/2.5Dcheese.webp";
@@ -440,7 +439,6 @@
 
         // 画像
         mouse.style.backgroundImage = `url(${IMG_MOUSE})`;
-        basket.style.backgroundImage = `url(${IMG_BASKET})`;
 
         // ====== ゲームパラメータ集約 ======
         const gameParams = {
@@ -854,7 +852,7 @@
         // ====== 衝突判定 ======
         function checkCollision(item, fall) {
             const iRect = item.getBoundingClientRect();
-            const bRect = basket.getBoundingClientRect();
+            const bRect = mouse.getBoundingClientRect();
             if (!(iRect.right < bRect.left || iRect.left > bRect.right || iRect.bottom < bRect.top || iRect.top > bRect.bottom)) {
                 const type = item.dataset.type;
 
