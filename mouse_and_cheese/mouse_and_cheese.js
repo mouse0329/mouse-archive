@@ -372,10 +372,10 @@ function startGame() {
 // ====== ネズミ移動 ======
 function moveMouse(x) {
     const rect = game.getBoundingClientRect();
-    // 修正: game.clientWidthで範囲制限
+    // 修正: game.offsetWidthで範囲制限
     let nx = x - rect.left - mouse.offsetWidth / 2;
     if (nx < 0) nx = 0;
-    if (nx > game.clientWidth - mouse.offsetWidth) nx = game.clientWidth - mouse.offsetWidth;
+    if (nx > game.offsetWidth - mouse.offsetWidth) nx = game.offsetWidth - mouse.offsetWidth;
     mouse.style.left = nx + "px";
     // 底辺を常に維持
     mouse.style.bottom = "10px";
@@ -438,14 +438,16 @@ function dropItem() {
         // 画像を使わない場合はCSSグラデで描画される
     }
 
-    item.style.left = Math.floor(Math.random() * (game.clientWidth - 40)) + "px";
+    // 修正: game.offsetWidthで落下位置を決定
+    item.style.left = Math.floor(Math.random() * (game.offsetWidth - item.offsetWidth)) + "px";
     item.style.top = "0px";
     game.appendChild(item);
 
     function fallStep() {
         if (gameOver) { item.remove(); return; }
         let top = parseInt(item.style.top);
-        if (top > game.clientHeight - 30) {
+        // 修正: game.offsetHeightで判定
+        if (top > game.offsetHeight - 30) {
             item.remove();
             fallTimers = fallTimers.filter(f => f !== fall);
         } else {
@@ -468,6 +470,7 @@ function dropItem() {
 
 // ====== 衝突判定 ======
 function checkCollision(item, fall) {
+    // 修正: getBoundingClientRectはそのまま
     const iRect = item.getBoundingClientRect();
     const bRect = mouse.getBoundingClientRect();
     if (!(iRect.right < bRect.left || iRect.left > bRect.right || iRect.bottom < bRect.top || iRect.top > bRect.bottom)) {
