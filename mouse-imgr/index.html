@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ネズミの背景ジェネレーター（重なり防止＋倍率対応）</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+
+        canvas {
+            border: 2px solid #333;
+            display: block;
+            margin: 20px auto;
+        }
+
+        .controls {
+            margin-bottom: 15px;
+        }
+
+        label {
+            margin-right: 10px;
+        }
+
+        .preset-btns button {
+            margin: 3px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>ネズミの背景ジェネレーター</h2>
+    ネズミをランダムに配置して、背景画像を生成します。<br>
+    ネズミのサイズ倍率や重なりを考慮して配置できるチュー🐭<br><br>
+
+    <div class="controls">
+        <label>画像幅: <input type="number" id="canvasWidth" value="800"></label>
+        <label>画像高さ: <input type="number" id="canvasHeight" value="500"></label><br><br>
+
+        <!-- プリセットボタン -->
+        <div class="preset-btns">
+            <button data-w="1080" data-h="1920">スマホ縦</button>
+            <button data-w="1920" data-h="1080">PC横</button>
+            <button data-w="1080" data-h="1080">正方形</button>
+            <button data-w="1200" data-h="630">Twitterヘッダー</button>
+            <button data-w="1500" data-h="500">Twitter横長</button>
+            <button data-w="1280" data-h="720">YouTubeサムネ</button>
+            <button data-w="2480" data-h="3508">A4印刷</button>
+        </div><br>
+
+        <label>ネズミの数: <input type="number" id="imageCount" value="5"></label><br><br>
+
+        <label>ネズミのサイズ倍率:
+            <input type="range" id="mouseScale" min="0.5" max="3" step="0.1" value="1">
+            <span id="scaleValue">1.0</span>倍
+        </label><br><br>
+
+        <label>背景色:
+            <input type="color" id="bgColor" value="#f9d597">
+            <label>ランダム</label>
+            <input type="checkbox" id="randomBgColor">
+        </label><br><br>
+
+        <button id="generateBtn" disabled>生成する</button>
+        <button id="saveBtn">画像を保存する</button>
+    </div>
+
+    <canvas id="myCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("myCanvas");
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+        img.src = "/imgs/mouse-one.png"; // サンプル画像パス
+
+        const IMAGE_WIDTH = 200;
+        const IMAGE_HEIGHT = 200;
+
+        img.onload = () => {
+            document.getElementById("generateBtn").disabled = false;
+        };
+
+        // プリセットボタン
+        document.querySelectorAll(".preset-btns button").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.getElementById("canvasWidth").value = btn.dataset.w;
+                document.getElementById("canvasHeight").value = btn.dataset.h;
+            });
+        });
+
+        // スライダー表示更新
+        const scaleSlider = document.getElementById("mouseScale");
+        const scaleLabel = document.getElementById("scaleValue");
+        scaleSlider.addEventListener("input", () => {
+            scaleLabel.textContent = parseFloat(scaleSlider.value).toFixed(1);
+        });
+
+        function getRandomColor() {
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            return `rgb(${r},${g},${b})`;
+        }
+
+        function setBackground(mode) {
+            const color = document.getElementById("randomBgColor").checked ? getRandomColor() : mode;
+            ctx.fillStyle = color || "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // 重なり防止でネズミを配置
+        function drawRandomImageNoOverlap(img, scale, placed) {
+            const w = IMAGE_WIDTH * scale;
+            const h = IMAGE_HEIGHT * scale;
+            let x, y;
+            let attempts = 0;
+
+            function isOverlap(x, y, w, h) {
+                for (const r of placed) {
+                    if (x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            do {
+                x = Math.random() * (canvas.width - w);
+                y = Math.random() * (canvas.height - h);
+                attempts++;
+                if (attempts > 200) break; // 無限ループ防止
+            } while (isOverlap(x, y, w, h));
+
+            placed.push({ x, y, w, h });
+
+            const angle = Math.random() * 360 * Math.PI / 180;
+            ctx.save();
+            ctx.translate(x + w / 2, y + h / 2);
+            ctx.rotate(angle);
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+            ctx.restore();
+        }
+
+        document.getElementById("generateBtn").addEventListener("click", () => {
+            const cWidth = parseInt(document.getElementById("canvasWidth").value, 10);
+            const cHeight = parseInt(document.getElementById("canvasHeight").value, 10);
+            const iCount = parseInt(document.getElementById("imageCount").value, 10);
+            const bgInput = document.getElementById("bgColor").value.trim();
+            const scale = parseFloat(scaleSlider.value);
+
+            canvas.width = cWidth;
+            canvas.height = cHeight;
+
+            setBackground(bgInput);
+
+            const placed = [];
+            for (let i = 0; i < iCount; i++) {
+                drawRandomImageNoOverlap(img, scale, placed);
+            }
+        });
+
+        document.getElementById("saveBtn").addEventListener("click", () => {
+            const link = document.createElement("a");
+            link.download = "back-mouse.png";
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        });
+    </script>
+
+</body>
+
+</html>
