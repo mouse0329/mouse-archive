@@ -357,6 +357,12 @@
             let osc, gain, osc2, osc3, osc4, osc5;
             gain = audioCtx.createGain();
 
+            // サステイン判定
+            const sustainMode = (
+                (instrument === "piano" || instrument === "vibraphone") &&
+                sustainKeys[" "]
+            );
+
             if (instrument === "sine" || instrument === "square" || instrument === "triangle" || instrument === "sawtooth") {
                 osc = audioCtx.createOscillator();
                 osc.type = instrument;
@@ -382,11 +388,13 @@
                 osc3.connect(gain);
                 gain.connect(audioCtx.destination);
                 gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                if (!sustainMode) {
+                    gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                }
                 osc.start();
                 osc2.start();
                 osc3.start();
-                activeOsc[mapping.key] = { osc, osc2, osc3, gain };
+                activeOsc[mapping.key] = { osc, osc2, osc3, gain, sustain: sustainMode };
             } else if (instrument === "violin") {
                 // バイオリン風: ノコギリ波+弱いビブラート
                 osc = audioCtx.createOscillator();
@@ -550,11 +558,13 @@
                 osc2.connect(gain);
                 gain.connect(audioCtx.destination);
                 gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                if (!sustainMode) {
+                    gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                }
                 osc.start();
                 osc2.start();
                 lfo.start();
-                activeOsc[mapping.key] = { osc, osc2, gain, lfo, lfoGain };
+                activeOsc[mapping.key] = { osc, osc2, gain, lfo, lfoGain, sustain: sustainMode };
             } else if (instrument === "organ") {
                 osc = audioCtx.createOscillator();
                 osc.type = "sine";
@@ -600,6 +610,11 @@
             if (!mapping) return;
             const o = activeOsc[mapping.key];
             if (o) {
+                // サステイン対応
+                if (o.sustain && (o.sustain === true) && (sustainKeys[" "])) {
+                    // サステイン中はstopしない
+                    return;
+                }
                 if (o.gain) {
                     try {
                         o.gain.gain.cancelScheduledValues(audioCtx.currentTime);
@@ -759,6 +774,22 @@
             playStart(e.code);
         });
         document.addEventListener("keyup", e => {
+            if (e.key === " ") {
+                sustainKeys[" "] = false;
+                // サステイン解除時にピアノ/ビブラフォン音を減衰させる
+                Object.entries(activeOsc).forEach(([k, o]) => {
+                    if (o.sustain && o.gain) {
+                        try {
+                            o.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+                            o.gain.gain.setValueAtTime(o.gain.gain.value, audioCtx.currentTime);
+                            o.gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.0);
+                        } catch (e) { }
+                        // 1秒後にstop
+                        setTimeout(() => playStop(k), 1100);
+                    }
+                });
+                return;
+            }
             playStop(e.key);
             playStop(e.code);
         });
