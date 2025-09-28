@@ -1,6 +1,49 @@
+:root {
+    --color-bg-main: #f9f7f4;
+    --color-bg-grad: #f1e9e0;
+
+    --color-key-white: #fffaf3;
+    --color-key-black1: #5c4630;
+    --color-key-black2: #3a2a1e;
+
+    --color-key-active1: #d8a66f;
+    --color-key-active2: #f0cfa3;
+
+    --color-key-border: #d9c9b8;
+    --color-key-shadow: rgba(120, 90, 60, 0.08);
+
+    --color-key-black-border: #3a2a1e;
+    --color-key-black-shadow: rgba(90, 60, 30, 0.18);
+
+    --color-key-active-shadow: rgba(216, 166, 111, 0.18);
+    --color-key-active-shadow2: rgba(216, 166, 111, 0.25);
+
+    --color-controls-bg: rgba(255, 250, 245, 0.85);
+    --color-controls-border: #d6bfa5;
+    --color-controls-shadow: rgba(120, 90, 60, 0.09);
+
+    --color-modal-bg: rgba(255, 250, 245, 0.92);
+    --color-modal-shadow: rgba(120, 90, 60, 0.22);
+
+    --color-table-bg: #fdfaf7;
+    --color-table-th-bg: #f1e9e0;
+    --color-table-th: #5c4630;
+    --color-table-border: #d9c9b8;
+
+    --color-btn-bg: rgba(241, 233, 224, 0.85);
+    --color-btn-bg-hover: rgba(235, 210, 180, 0.92);
+    --color-btn: #5c4630;
+    --color-btn-hover: #3a2a1e;
+
+    --color-scrollbar-bg: #f1e9e0;
+    --color-scrollbar-thumb: #d6bfa5;
+    --color-scrollbar-thumb-hover: #b48b5f;
+}
+
+
 body {
     font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', Roboto, sans-serif;
-    background: linear-gradient(135deg, #f4f4f9 0%, #e3eafc 100%);
+    background: linear-gradient(135deg, var(--color-bg-main) 0%, var(--color-bg-grad) 100%);
     color: #222;
     padding: 10px;
     margin: 0;
@@ -14,8 +57,8 @@ h2 {
     margin-bottom: 10px;
     font-size: 2.2em;
     letter-spacing: 0.05em;
-    color: #3a4a6b;
-    text-shadow: 0 2px 8px #e3eafc;
+    color: var(--color-table-th);
+    text-shadow: 0 2px 8px var(--color-bg-grad);
 }
 
 #keyboard {
@@ -27,7 +70,7 @@ h2 {
     position: relative;
     background: rgba(255, 255, 255, 0.65);
     border-radius: 8px;
-    box-shadow: 0 4px 24px rgba(60, 80, 120, 0.13);
+    box-shadow: 0 4px 24px var(--color-key-shadow);
     margin-bottom: 18px;
     backdrop-filter: blur(24px) saturate(1.2);
     -webkit-backdrop-filter: blur(24px) saturate(1.2);
@@ -41,10 +84,10 @@ h2 {
     text-align: center;
     line-height: 160px;
     border-radius: 4px 4px 6px 6px;
-    border: 1.5px solid #c5d0e6;
+    border: 1.5px solid var(--color-key-border);
     cursor: pointer;
     transition: all 0.12s cubic-bezier(.4, 0, .2, 1);
-    box-shadow: 0 3px 12px rgba(60, 80, 120, 0.08);
+    box-shadow: 0 3px 12px var(--color-key-shadow);
     user-select: none;
     font-size: 15px;
     position: relative;
@@ -65,8 +108,8 @@ h2 {
     margin-left: -14px;
     margin-right: -14px;
     z-index: 2;
-    border: 1.5px solid #222;
-    box-shadow: 0 2px 8px rgba(60, 80, 120, 0.18);
+    border: 1.5px solid var(--color-key-black-border);
+    box-shadow: 0 2px 8px var(--color-key-black-shadow);
     /* すりガラス */
     backdrop-filter: blur(10px) saturate(1.1);
     -webkit-backdrop-filter: blur(10px) saturate(1.1);
@@ -74,11 +117,11 @@ h2 {
 }
 
 .key.active {
-    background: linear-gradient(180deg, rgba(255, 179, 71, 0.92) 70%, rgba(255, 204, 128, 0.92) 100%);
+    background: linear-gradient(180deg, var(--color-key-active1) 70%, var(--color-key-active2) 100%);
     color: #fff;
     transform: translateY(6px) scale(1.03);
-    box-shadow: 0 4px 16px rgba(255, 180, 71, 0.18);
-    border-color: #ffb347;
+    box-shadow: 0 4px 16px var(--color-key-active-shadow);
+    border-color: var(--color-key-active1);
     /* すりガラス */
     backdrop-filter: blur(10px) saturate(1.1);
     -webkit-backdrop-filter: blur(10px) saturate(1.1);
@@ -89,10 +132,10 @@ h2 {
 .controls {
     text-align: center;
     margin-bottom: 16px;
-    background: rgba(255, 255, 255, 0.85);
+    background: var(--color-controls-bg);
     border-radius: 14px;
     padding: 10px 0 6px 0;
-    box-shadow: 0 2px 16px rgba(60, 80, 120, 0.09);
+    box-shadow: 0 2px 16px var(--color-controls-shadow);
     backdrop-filter: blur(18px) saturate(1.1);
     -webkit-backdrop-filter: blur(18px) saturate(1.1);
 }
@@ -103,14 +146,14 @@ h2 {
     padding: 7px 12px;
     margin: 2px 3px;
     border-radius: 7px;
-    border: 1.2px solid #b0c4de;
+    border: 1.2px solid var(--color-controls-border);
     background: #fafdff;
     color: #222;
     font-weight: bold;
     cursor: pointer;
     font-size: 1em;
     transition: 0.18s;
-    box-shadow: 0 1px 3px rgba(60, 80, 120, 0.04);
+    box-shadow: 0 1px 3px var(--color-key-shadow);
 }
 
 .controls select:focus,
@@ -123,7 +166,7 @@ h2 {
 
 .controls select:hover,
 .controls button:hover {
-    background: #e3eafc;
+    background: var(--color-table-th-bg);
 }
 
 .controls label {
@@ -147,14 +190,14 @@ h2 {
 }
 
 .modal-content {
-    background: rgba(255, 255, 255, 0.92);
+    background: var(--color-modal-bg);
     padding: 22px 18px 18px 18px;
     border-radius: 18px;
     width: 95%;
     max-width: 480px;
     max-height: 90%;
     overflow-y: auto;
-    box-shadow: 0 8px 32px rgba(60, 80, 120, 0.22);
+    box-shadow: 0 8px 32px var(--color-modal-shadow);
     /* すりガラス */
     backdrop-filter: blur(18px) saturate(1.1);
     -webkit-backdrop-filter: blur(18px) saturate(1.1);
@@ -205,29 +248,29 @@ h2 {
 .modal-close:hover,
 .wavekey-modal-close:hover,
 #instrumentParamClose:hover {
-    color: #3a4a6b;
+    color: var(--color-table-th);
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
-    background: #fafdff;
+    background: var(--color-table-bg);
     border-radius: 8px;
     overflow: hidden;
 }
 
 th,
 td {
-    border: 1px solid #c5d0e6;
+    border: 1px solid var(--color-table-border);
     padding: 6px 4px;
     text-align: center;
     font-size: 14px;
 }
 
 th {
-    background: #e3eafc;
-    color: #3a4a6b;
+    background: var(--color-table-th-bg);
+    color: var(--color-table-th);
     font-weight: bold;
 }
 
@@ -236,7 +279,7 @@ select {
     text-align: center;
     border-radius: 5px;
     padding: 3px 6px;
-    border: 1px solid #b0c4de;
+    border: 1px solid var(--color-controls-border);
     font-size: 1em;
 }
 
@@ -258,22 +301,22 @@ select:focus {
 
 button {
     border: none;
-    background: rgba(227, 234, 252, 0.85);
-    color: #3a4a6b;
+    background: var(--color-btn-bg);
+    color: var(--color-btn);
     font-weight: bold;
     border-radius: 7px;
     padding: 7px 14px;
     margin: 2px 3px;
     transition: background 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
-    box-shadow: 0 1px 3px rgba(60, 80, 120, 0.04);
+    box-shadow: 0 1px 3px var(--color-key-shadow);
     /* 追加: ボタンにもブラー効果 */
     backdrop-filter: blur(12px) saturate(1.1);
     -webkit-backdrop-filter: blur(12px) saturate(1.1);
 }
 
 button:hover {
-    background: rgba(179, 215, 255, 0.92);
-    color: #222;
+    background: var(--color-btn-bg-hover);
+    color: var(--color-btn-hover);
     transform: scale(1.04);
     box-shadow: 0 4px 16px rgba(179, 215, 255, 0.18);
     /* すりガラス */
@@ -287,7 +330,7 @@ button:hover {
 
 .modal-content h3,
 .modal-content h4 {
-    color: #3a4a6b;
+    color: var(--color-table-th);
     margin-top: 0.5em;
     margin-bottom: 0.5em;
 }
@@ -304,16 +347,16 @@ button:hover {
 /* スクロールバー美化 */
 ::-webkit-scrollbar {
     width: 10px;
-    background: #e3eafc;
+    background: var(--color-scrollbar-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #b3d7ff;
+    background: var(--color-scrollbar-thumb);
     border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #4e9af1;
+    background: var(--color-scrollbar-thumb-hover);
 }
 
 @media(max-width:600px) {
