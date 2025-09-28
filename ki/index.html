@@ -321,8 +321,8 @@
             { key: "p", note: "E5", color: "白" },
             { key: "@", note: "F5", color: "白" },
             { key: "^", note: "F#5", color: "黒" },
-            { key: "¥", note: "G5", color: "白" },
-            { key: "[", note: "G#5", color: "黒" }
+            { key: "¥", note: "G5", color: "白" }, // ←ここを[と入れ替え
+            { key: "[", note: "G#5", color: "黒" }, // ←ここを¥と入れ替え
         ];
 
 
@@ -372,10 +372,12 @@
             gain = audioCtx.createGain();
 
             // サステイン判定
-            const sustainMode = (instrument === "piano" && sustainKeys[" "]);
+            const sustainMode = ((instrument === "piano" || instrument === "vibraphone") && sustainKeys[" "]);
+            // サステイン時の減衰時間
+            const sustainDecay = sustainMode ? 4.8 : 1.2; // 4倍
 
             // 1. 押した瞬間だけ音がなり、音がそのまま響いて消えていく楽器
-            if (["guitar", "bass", "marimba", "vibraphone"].includes(instrument)) {
+            if (["guitar", "bass", "marimba"].includes(instrument)) {
                 if (instrument === "guitar") {
                     osc = audioCtx.createOscillator();
                     osc.type = "triangle";
@@ -411,40 +413,44 @@
                     osc3.connect(gain);
                     gain.connect(audioCtx.destination);
                     gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
-                    gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                    // マリンバは押している間もすぐ減衰
+                    gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
                     osc.start();
                     osc2.start();
                     osc3.start();
                     activeOsc[mapping.key] = { osc, osc2, osc3, gain };
-                } else if (instrument === "vibraphone") {
-                    osc = audioCtx.createOscillator();
-                    osc.type = "sine";
-                    osc.frequency.value = freq;
-                    osc2 = audioCtx.createOscillator();
-                    osc2.type = "sine";
-                    osc2.frequency.value = freq * 2.0;
-                    let g1 = audioCtx.createGain();
-                    let g2 = audioCtx.createGain();
-                    g1.gain.value = 1.0;
-                    g2.gain.value = 0.3;
-                    let lfo = audioCtx.createOscillator();
-                    let lfoGain = audioCtx.createGain();
-                    lfo.frequency.value = 5.5;
-                    lfoGain.gain.value = 6;
-                    lfo.connect(lfoGain);
-                    lfoGain.connect(osc.frequency);
-                    osc.connect(g1); g1.connect(gain);
-                    osc2.connect(g2); g2.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
-                    gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
-                    osc.start();
-                    osc2.start();
-                    lfo.start();
-                    activeOsc[mapping.key] = { osc, osc2, gain, g1, g2, lfo, lfoGain };
                 }
             }
-            // 2. 押している間、持続的に音がなり、離した瞬間音が鳴り止む楽器
+            // 2. ビブラフォン: ピアノと同じくスペースキーで伸びる
+            else if (instrument === "vibraphone") {
+                osc = audioCtx.createOscillator();
+                osc.type = "sine";
+                osc.frequency.value = freq;
+                osc2 = audioCtx.createOscillator();
+                osc2.type = "sine";
+                osc2.frequency.value = freq * 2.0;
+                let g1 = audioCtx.createGain();
+                let g2 = audioCtx.createGain();
+                g1.gain.value = 1.0;
+                g2.gain.value = 0.3;
+                let lfo = audioCtx.createOscillator();
+                let lfoGain = audioCtx.createGain();
+                lfo.frequency.value = 5.5;
+                lfoGain.gain.value = 6;
+                lfo.connect(lfoGain);
+                lfoGain.connect(osc.frequency);
+                osc.connect(g1); g1.connect(gain);
+                osc2.connect(g2); g2.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
+                // スペースキーで減衰時間を伸ばす
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + (sustainMode ? 4.8 : 1.2));
+                osc.start();
+                osc2.start();
+                lfo.start();
+                activeOsc[mapping.key] = { osc, osc2, gain, g1, g2, lfo, lfoGain, sustain: sustainMode, isVibraphone: true };
+            }
+            // 3. 押している間、持続的に音がなり、離した瞬間音が鳴り止む楽器
             else if (["violin", "clarinet", "flute", "brass", "sax", "organ", "synth"].includes(instrument)) {
                 if (instrument === "violin") {
                     osc = audioCtx.createOscillator();
@@ -569,7 +575,7 @@
                     activeOsc[mapping.key] = { osc, osc2, gain };
                 }
             }
-            // 3. ピアノ: 押している間はだんだん音が消え、離した瞬間に音が消える
+            // 4. ピアノ: 押している間はだんだん音が消え、離した瞬間に音が消える
             else if (instrument === "piano") {
                 osc = audioCtx.createOscillator();
                 osc.type = "sine";
@@ -591,8 +597,8 @@
                 osc3.connect(g3); g3.connect(gain);
                 gain.connect(audioCtx.destination);
                 gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-                // ピアノは押している間も減衰
-                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                // ピアノは押している間も減衰、スペースキーで減衰時間を伸ばす
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + sustainDecay);
                 osc.start();
                 osc2.start();
                 osc3.start();
@@ -619,12 +625,12 @@
             if (!mapping) return;
             const o = activeOsc[mapping.key];
             if (o) {
-                // サステイン対応（ピアノのみ）
-                if (o.isPiano && sustainKeys[" "]) {
+                // サステイン対応（ピアノ・ビブラフォンのみ）
+                if ((o.isPiano || o.isVibraphone) && sustainKeys[" "]) {
                     return;
                 }
-                // ピアノは離した瞬間に音を消す
-                if (o.isPiano && o.gain) {
+                // ピアノ・ビブラフォンは離した瞬間に音を消す
+                if ((o.isPiano || o.isVibraphone) && o.gain) {
                     try {
                         o.gain.gain.cancelScheduledValues(audioCtx.currentTime);
                         o.gain.gain.setValueAtTime(o.gain.gain.value, audioCtx.currentTime);
@@ -788,14 +794,14 @@
             if (e.key === " ") {
                 if (!sustainKeys[" "]) {
                     sustainKeys[" "] = true;
-                    // サステイン中に押されているピアノ音の減衰を止める
+                    // サステイン中に押されているピアノ/ビブラフォン音の減衰を止める
                     Object.values(activeOsc).forEach(o => {
-                        if (o.isPiano && o.gain) {
+                        if ((o.isPiano || o.isVibraphone) && o.gain) {
                             try {
                                 o.gain.gain.cancelScheduledValues(audioCtx.currentTime);
                                 o.gain.gain.setValueAtTime(o.gain.gain.value, audioCtx.currentTime);
-                                // ピアノは押している間も減衰し続ける
-                                o.gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                                // スペースキーで減衰時間を伸ばす
+                                o.gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 4.8);
                             } catch (e) { }
                         }
                     });
@@ -810,9 +816,9 @@
         document.addEventListener("keyup", e => {
             if (e.key === " ") {
                 sustainKeys[" "] = false;
-                // サステイン解除時にピアノ音を減衰させる
+                // サステイン解除時にピアノ/ビブラフォン音を減衰させる
                 Object.entries(activeOsc).forEach(([k, o]) => {
-                    if (o.isPiano && o.gain) {
+                    if ((o.isPiano || o.isVibraphone) && o.gain) {
                         try {
                             o.gain.gain.cancelScheduledValues(audioCtx.currentTime);
                             o.gain.gain.setValueAtTime(o.gain.gain.value, audioCtx.currentTime);
