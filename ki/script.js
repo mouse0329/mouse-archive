@@ -1,0 +1,956 @@
+// 初期マップ
+let keyMapJP = [
+    // 下段
+    { key: "z", note: "C3", color: "白" },
+    { key: "s", note: "C#3", color: "黒" },
+    { key: "x", note: "D3", color: "白" },
+    { key: "d", note: "D#3", color: "黒" },
+    { key: "c", note: "E3", color: "白" },
+    { key: "v", note: "F3", color: "白" },
+    { key: "g", note: "F#3", color: "黒" },
+    { key: "b", note: "G3", color: "白" },
+    { key: "h", note: "G#3", color: "黒" },
+    { key: "n", note: "A3", color: "白" },
+    { key: "j", note: "A#3", color: "黒" },
+    { key: "m", note: "B3", color: "白" },
+    { key: ",", note: "C4", color: "白" },
+    { key: "l", note: "C#4", color: "黒" },
+    { key: ".", note: "D4", color: "白" },
+    { key: ";", note: "D#4", color: "黒" },
+    { key: "/", note: "E4", color: "白" },
+    { key: "\\", note: "F4", color: "白" },
+    { key: "]", note: "F#4", color: "黒" },
+
+    // 上段
+    { key: "q", note: "C4", color: "白" },
+    { key: "2", note: "C#4", color: "黒" },
+    { key: "w", note: "D4", color: "白" },
+    { key: "3", note: "D#4", color: "黒" },
+    { key: "e", note: "E4", color: "白" },
+    { key: "r", note: "F4", color: "白" },
+    { key: "5", note: "F#4", color: "黒" },
+    { key: "t", note: "G4", color: "白" },
+    { key: "6", note: "G#4", color: "黒" },
+    { key: "y", note: "A4", color: "白" },
+    { key: "7", note: "A#4", color: "黒" },
+    { key: "u", note: "B4", color: "白" },
+    { key: "i", note: "C5", color: "白" },
+    { key: "9", note: "C#5", color: "黒" },
+    { key: "o", note: "D5", color: "白" },
+    { key: "0", note: "D#5", color: "黒" },
+    { key: "p", note: "E5", color: "白" },
+    { key: "@", note: "F5", color: "白" },
+    { key: "^", note: "F#5", color: "黒" },
+    { key: "[", note: "G5", color: "白" }, // ← G5
+    { key: "¥", note: "G#5", color: "黒" }, // ← G#5
+];
+
+
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let activeOsc = {};
+let currentOctaveOffset = 0;
+let showNoteLabel = true;
+
+// 楽器ファンクションキー設定
+let waveKeyMap = {
+    F1: "sine",
+    F2: "piano",
+    F3: "violin",
+    F4: "clarinet"
+};
+
+// 移調値
+let transpose = 0;
+
+// サステイン制御用
+let sustainKeys = {};
+
+// 音楽記号→周波数
+function noteToFreq(note) {
+    const notes = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
+    const match = note.match(/^([A-G]#?)(\d)$/); if (!match) return null;
+    const [_, n, octave] = match;
+    // 移調を反映
+    let midi = 12 * (parseInt(octave) + 1) + notes[n] + transpose;
+    return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+// 再生開始
+function playStart(keyOrCode) {
+    const mapping = keyMapJP.find(k =>
+        k.key.toLowerCase() === keyOrCode.toLowerCase() ||
+        (k.code && k.code === keyOrCode)
+    );
+    if (!mapping) return;
+    let freq = isNaN(mapping.note) ? noteToFreq(mapping.note) : parseFloat(mapping.note); if (!freq) return;
+
+    // --- 2回目以降の押下時の音リセット処理 ---
+    const instrument = document.getElementById("instrument").value;
+    const sustainMode = ((instrument === "piano" || instrument === "vibraphone") && sustainKeys[" "]);
+    // ギター・ベース・マリンバ・ビブラフォン・ピアノで、既に音が鳴っていたら一度止めてから再生
+    if (
+        (["guitar", "bass", "marimba", "vibraphone"].includes(instrument) || (instrument === "piano" && sustainMode))
+        && activeOsc[mapping.key]
+    ) {
+        playStop(mapping.key);
+    }
+    // ピアノもスペースキー押しっぱなし時はリセット
+    if (instrument === "piano" && sustainMode && activeOsc[mapping.key]) {
+        playStop(mapping.key);
+    }
+
+    freq *= Math.pow(2, currentOctaveOffset);
+    if (activeOsc[mapping.key]) return; // それ以外は多重発音防止
+
+    const keyDiv = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
+    if (keyDiv) keyDiv.classList.add("active");
+
+    let osc, gain, osc2, osc3, osc4, osc5;
+    gain = audioCtx.createGain();
+
+    // サステイン時の減衰時間
+    const sustainDecay = sustainMode ? 4.8 : 1.2; // ピアノ
+    const vibSustainDecay = sustainMode ? 2.4 : 1.2; // ビブラフォン（2倍）
+
+    // 1. 押した瞬間だけ音がなり、音がそのまま響いて消えていく楽器
+    if (["guitar", "bass", "marimba"].includes(instrument)) {
+        let decay = 1.0;
+        if (instrument === "guitar") decay = 4.0; // 4倍
+        if (instrument === "bass") decay = 4.8;   // 4倍
+        if (instrument === "marimba") decay = 0.25;
+        if (instrument === "guitar") {
+            osc = audioCtx.createOscillator();
+            osc.type = "triangle";
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + decay);
+            osc.start();
+            activeOsc[mapping.key] = { osc, gain, isOneShot: true };
+        } else if (instrument === "bass") {
+            osc = audioCtx.createOscillator();
+            osc.type = "square";
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + decay);
+            osc.start();
+            activeOsc[mapping.key] = { osc, gain, isOneShot: true };
+        } else if (instrument === "marimba") {
+            osc = audioCtx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            osc2 = audioCtx.createOscillator();
+            osc2.type = "sine";
+            osc2.frequency.value = freq * 4.0;
+            osc3 = audioCtx.createOscillator();
+            osc3.type = "sine";
+            osc3.frequency.value = freq * 10.0;
+            osc.connect(gain);
+            osc2.connect(gain);
+            osc3.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + decay);
+            osc.start();
+            osc2.start();
+            osc3.start();
+            activeOsc[mapping.key] = { osc, osc2, osc3, gain, isOneShot: true };
+        }
+    }
+    // 2. ビブラフォン: ピアノと同じくスペースキーで伸びる（2倍）
+    else if (instrument === "vibraphone") {
+        osc = audioCtx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        osc2 = audioCtx.createOscillator();
+        osc2.type = "sine";
+        osc2.frequency.value = freq * 2.0;
+        let g1 = audioCtx.createGain();
+        let g2 = audioCtx.createGain();
+        g1.gain.value = 1.0;
+        g2.gain.value = 0.3;
+        let lfo = audioCtx.createOscillator();
+        let lfoGain = audioCtx.createGain();
+        lfo.frequency.value = 5.5;
+        lfoGain.gain.value = 6;
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        osc.connect(g1); g1.connect(gain);
+        osc2.connect(g2); g2.connect(gain);
+        gain.connect(audioCtx.destination);
+        gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + vibSustainDecay);
+        osc.start();
+        osc2.start();
+        lfo.start();
+        activeOsc[mapping.key] = { osc, osc2, gain, g1, g2, lfo, lfoGain, sustain: sustainMode, isVibraphone: true };
+    }
+    // 3. 押している間、持続的に音がなり、離した瞬間音が鳴り止む楽器
+    else if (["violin", "clarinet", "flute", "brass", "sax", "organ", "synth"].includes(instrument)) {
+        if (instrument === "violin") {
+            osc = audioCtx.createOscillator();
+            osc.type = "sawtooth";
+            osc.frequency.value = freq;
+            let lfo = audioCtx.createOscillator();
+            let lfoGain = audioCtx.createGain();
+            lfo.frequency.value = 6;
+            lfoGain.gain.value = 3;
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+            osc.start();
+            lfo.start();
+            activeOsc[mapping.key] = { osc, gain, lfo, lfoGain };
+        } else if (instrument === "clarinet") {
+            osc = audioCtx.createOscillator();
+            osc.type = "square";
+            osc.frequency.value = freq;
+            osc2 = audioCtx.createOscillator();
+            osc2.type = "square";
+            osc2.frequency.value = freq * 3;
+            osc3 = audioCtx.createOscillator();
+            osc3.type = "square";
+            osc3.frequency.value = freq * 5;
+            osc.connect(gain);
+            osc2.connect(gain);
+            osc3.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.13, audioCtx.currentTime);
+            osc.start();
+            osc2.start();
+            osc3.start();
+            activeOsc[mapping.key] = { osc, osc2, osc3, gain };
+        } else if (instrument === "flute") {
+            osc = audioCtx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            let bufferSize = 256;
+            let noise = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+            noise.onaudioprocess = function (e) {
+                let output = e.outputBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = (Math.random() * 2 - 1) * 0.03;
+                }
+            };
+            noise.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            osc.start();
+            activeOsc[mapping.key] = { osc, gain, noise };
+        } else if (instrument === "brass") {
+            osc = audioCtx.createOscillator();
+            osc.type = "sawtooth";
+            osc.frequency.value = freq;
+            osc2 = audioCtx.createOscillator();
+            osc2.type = "square";
+            osc2.frequency.value = freq * 2;
+            osc.connect(gain);
+            osc2.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+            osc.start();
+            osc2.start();
+            activeOsc[mapping.key] = { osc, osc2, gain };
+        } else if (instrument === "sax") {
+            osc = audioCtx.createOscillator();
+            osc.type = "triangle";
+            osc.frequency.value = freq;
+            osc2 = audioCtx.createOscillator();
+            osc2.type = "square";
+            osc2.frequency.value = freq * 2;
+            let lfo = audioCtx.createOscillator();
+            let lfoGain = audioCtx.createGain();
+            lfo.frequency.value = 7;
+            lfoGain.gain.value = 4;
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+            osc.connect(gain);
+            osc2.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
+            osc.start();
+            osc2.start();
+            lfo.start();
+            activeOsc[mapping.key] = { osc, osc2, gain, lfo, lfoGain };
+        } else if (instrument === "organ") {
+            osc = audioCtx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            osc2 = audioCtx.createOscillator();
+            osc2.type = "sine";
+            osc2.frequency.value = freq * 2;
+            osc3 = audioCtx.createOscillator();
+            osc3.type = "sine";
+            osc3.frequency.value = freq * 4;
+            osc.connect(gain);
+            osc2.connect(gain);
+            osc3.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+            osc.start();
+            osc2.start();
+            osc3.start();
+            activeOsc[mapping.key] = { osc, osc2, osc3, gain };
+        } else if (instrument === "synth") {
+            osc = audioCtx.createOscillator();
+            osc.type = "sawtooth";
+            osc.frequency.value = freq;
+            osc2 = audioCtx.createOscillator();
+            osc2.type = "square";
+            osc2.frequency.value = freq * 2;
+            osc.connect(gain);
+            osc2.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+            osc.start();
+            osc2.start();
+            activeOsc[mapping.key] = { osc, osc2, gain };
+        }
+    }
+    // 4. ピアノ: 押している間はだんだん音が消え、離した瞬間に音が消える
+    else if (instrument === "piano") {
+        osc = audioCtx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        osc2 = audioCtx.createOscillator();
+        osc2.type = "sine";
+        osc2.frequency.value = freq * 2;
+        osc3 = audioCtx.createOscillator();
+        osc3.type = "sine";
+        osc3.frequency.value = freq * 3;
+        let g1 = audioCtx.createGain();
+        let g2 = audioCtx.createGain();
+        let g3 = audioCtx.createGain();
+        g1.gain.value = 1.0;
+        g2.gain.value = 0.4;
+        g3.gain.value = 0.2;
+        osc.connect(g1); g1.connect(gain);
+        osc2.connect(g2); g2.connect(gain);
+        osc3.connect(g3); g3.connect(gain);
+        gain.connect(audioCtx.destination);
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + sustainDecay);
+        osc.start();
+        osc2.start();
+        osc3.start();
+        activeOsc[mapping.key] = { osc, osc2, osc3, gain, g1, g2, g3, sustain: sustainMode, isPiano: true };
+    }
+    // サイン波・矩形波・三角波・ノコギリ波
+    else if (["sine", "square", "triangle", "sawtooth"].includes(instrument)) {
+        osc = audioCtx.createOscillator();
+        osc.type = instrument;
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        osc.start();
+        activeOsc[mapping.key] = { osc, gain };
+    }
+}
+
+function playStop(keyOrCode) {
+    const mapping = keyMapJP.find(k =>
+        k.key.toLowerCase() === keyOrCode.toLowerCase() ||
+        (k.code && k.code === keyOrCode)
+    );
+    if (!mapping) return;
+    const o = activeOsc[mapping.key];
+    if (o) {
+        // サステイン対応（ピアノ・ビブラフォンのみ）
+        if ((o.isPiano || o.isVibraphone) && sustainKeys[" "]) {
+            // ただし、再発音時は止める（playStartで処理済み）
+            return;
+        }
+        // ワンショット系（ギター・ベース・マリンバ・ビブラフォン・ピアノのサステイン時）は自動で消えるので、ここでは即return
+        if (o.isOneShot) return;
+        // ピアノ・ビブラフォンは離した瞬間に音を消す
+        if ((o.isPiano || o.isVibraphone) && o.gain) {
+            try {
+                o.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+                o.gain.gain.setValueAtTime(o.gain.gain.value, audioCtx.currentTime);
+                o.gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            } catch (e) { }
+        } else if (o.gain) {
+            try {
+                o.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+                o.gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            } catch (e) { }
+        }
+        if (o.osc) o.osc.stop(audioCtx.currentTime + 0.12);
+        if (o.osc2) o.osc2.stop(audioCtx.currentTime + 0.12);
+        if (o.osc3) o.osc3.stop(audioCtx.currentTime + 0.12);
+        if (o.lfo) o.lfo.stop(audioCtx.currentTime + 0.12);
+        if (o.noise) o.noise.disconnect();
+        delete activeOsc[mapping.key];
+    }
+    const keyDiv = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
+    if (keyDiv) keyDiv.classList.remove("active");
+}
+
+// キーボード描画
+function renderKeyboard() {
+    const kb = document.getElementById("keyboard"); kb.innerHTML = "";
+    keyMapJP.forEach(mapping => {
+        const div = document.createElement("div"); div.className = "key";
+        if (mapping.color === "黒") div.classList.add("black");
+        div.dataset.key = mapping.key;
+        div.textContent = mapping.key; // 真ん中にキー文字
+        if (showNoteLabel) {
+            const span = document.createElement("div");
+            span.style.position = "absolute";
+            span.style.bottom = "-20px";   // 下端に表示
+            span.style.width = "100%";
+            span.style.textAlign = "center";
+            span.style.fontSize = "12px";
+            span.style.color = (mapping.color === "黒" ? "#fff" : "#000");
+            span.textContent = mapping.note;
+            div.appendChild(span);
+        }
+
+        div.addEventListener("mousedown", () => playStart(mapping.key));
+        div.addEventListener("mouseup", () => playStop(mapping.key));
+        div.addEventListener("mouseleave", () => playStop(mapping.key));
+        div.addEventListener("touchstart", (e) => { e.preventDefault(); playStart(mapping.key); });
+        div.addEventListener("touchend", (e) => { e.preventDefault(); playStop(mapping.key); });
+        kb.appendChild(div);
+    });
+}
+
+// 自動保存
+function autoSaveMap() { localStorage.setItem("keyMapJP", JSON.stringify(keyMapJP)); }
+
+// マッピングテーブル描画
+function renderMappingTable() {
+    const table = document.getElementById("mappingTable");
+    table.innerHTML = "<tr><th>順番</th><th>キー</th><th>音</th><th>色</th><th>削除</th></tr>";
+
+    keyMapJP.forEach((mapping, index) => {
+        const row = table.insertRow();
+        row.dataset.index = index;
+
+        // 順番ドラッグ用
+        const cellOrder = row.insertCell(); cellOrder.textContent = "☰";
+
+        // キー入力
+        const cellKey = row.insertCell();
+        const inputKey = document.createElement("input");
+        inputKey.value = mapping.key;
+        inputKey.maxLength = 1;
+        inputKey.addEventListener("input", () => { mapping.key = inputKey.value; renderKeyboard(); autoSaveMap(); });
+        cellKey.appendChild(inputKey);
+
+        // 音入力
+        const cellNote = row.insertCell();
+        const inputNote = document.createElement("input");
+        inputNote.value = mapping.note;
+        inputNote.addEventListener("input", () => { mapping.note = inputNote.value; renderKeyboard(); autoSaveMap(); });
+        cellNote.appendChild(inputNote);
+
+        // 色選択
+        const cellColor = row.insertCell();
+        const selectColor = document.createElement("select");
+        ["白", "黒"].forEach(c => {
+            const opt = document.createElement("option");
+            opt.value = c; opt.textContent = c;
+            if (c === mapping.color) opt.selected = true;
+            selectColor.appendChild(opt);
+        });
+        selectColor.addEventListener("change", () => { mapping.color = selectColor.value; renderKeyboard(); autoSaveMap(); });
+        cellColor.appendChild(selectColor);
+
+        // 🔹削除ボタン追加
+        const cellDelete = row.insertCell();
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "削除";
+        delBtn.style.background = "#fff";
+        delBtn.style.color = "#222";
+        delBtn.style.border = "1px solid #ccc";
+        delBtn.style.borderRadius = "4px";
+        delBtn.style.cursor = "pointer";
+        delBtn.addEventListener("click", () => {
+            keyMapJP.splice(index, 1);
+            renderMappingTable();
+            renderKeyboard();
+            autoSaveMap();
+        });
+        cellDelete.appendChild(delBtn);
+    });
+}
+
+
+// 新規マッピング
+document.getElementById("addMapping").addEventListener("click", () => {
+    const key = prompt("追加するキーを入力してチュー:"); if (!key) return;
+    const note = prompt("割り当てる音(C4など)を入力してチュー:"); if (!note) return;
+    keyMapJP.push({ key, note, color: "白" }); renderMappingTable(); renderKeyboard(); autoSaveMap();
+});
+
+// モーダル操作
+const modal = document.getElementById("modal");
+document.getElementById("openModal").addEventListener("click", () => { modal.style.display = "flex"; });
+document.querySelector(".modal-close").addEventListener("click", () => { modal.style.display = "none"; });
+window.addEventListener("click", e => { if (e.target === modal) modal.style.display = "none"; });
+
+// タッチ・キー操作
+document.addEventListener("keydown", e => {
+    // 楽器ファンクションキー
+    if (e.key.match(/^F\d+$/)) {
+        if (waveKeyMap[e.key]) {
+            document.getElementById("instrument").value = waveKeyMap[e.key];
+        }
+        e.preventDefault();
+        return;
+    }
+    if (e.key === "ArrowUp") {
+        currentOctaveOffset++;
+        if (currentOctaveOffset > 4) currentOctaveOffset = 4;
+        updateOctaveDisplay();
+        return;
+    }
+    if (e.key === "ArrowDown") {
+        currentOctaveOffset--;
+        if (currentOctaveOffset < -4) currentOctaveOffset = -4;
+        updateOctaveDisplay();
+        return;
+    }
+    if (e.key === "ArrowRight") {
+        transpose++;
+        if (transpose > 24) transpose = 24;
+        updateTransposeDisplay();
+        return;
+    }
+    if (e.key === "ArrowLeft") {
+        transpose--;
+        if (transpose < -24) transpose = -24;
+        updateTransposeDisplay();
+        return;
+    }
+    if (e.key === " ") {
+        if (!sustainKeys[" "]) {
+            sustainKeys[" "] = true;
+            // サステイン中に押されているピアノ/ビブラフォン音の減衰を止める
+            Object.values(activeOsc).forEach(o => {
+                if ((o.isPiano || o.isVibraphone) && o.gain) {
+                    try {
+                        o.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+                        o.gain.gain.setValueAtTime(o.gain.gain.value, audioCtx.currentTime);
+                        // スペースキーで減衰時間を伸ばす
+                        o.gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 4.8);
+                    } catch (e) { }
+                }
+            });
+        }
+        e.preventDefault();
+        return;
+    }
+    playStart(e.key);
+    playStart(e.code);
+});
+
+document.addEventListener("keyup", e => {
+    if (e.key === " ") {
+        sustainKeys[" "] = false;
+        // サステイン解除時にピアノ/ビブラフォン音を減衰させる
+        Object.entries(activeOsc).forEach(([k, o]) => {
+            if ((o.isPiano || o.isVibraphone) && o.gain) {
+                try {
+                    o.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+                    o.gain.gain.setValueAtTime(o.gain.gain.value, audioCtx.currentTime);
+                    o.gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                } catch (e) { }
+                setTimeout(() => playStop(k), 120);
+            }
+        });
+        return;
+    }
+    playStop(e.key);
+    playStop(e.code);
+});
+
+// 音符ラベル表示切替
+document.getElementById("showNoteLabel").addEventListener("change", (e) => {
+    showNoteLabel = e.target.checked; renderKeyboard();
+});
+
+// オクターブ表示更新
+function updateOctaveDisplay() {
+    document.getElementById("octaveInput").value = currentOctaveOffset;
+}
+// 移調表示更新
+function updateTransposeDisplay() {
+    document.getElementById("transposeInput").value = transpose;
+}
+
+// オクターブ入力欄のイベント
+document.addEventListener("DOMContentLoaded", () => {
+    const octaveInput = document.getElementById("octaveInput");
+    octaveInput.addEventListener("input", () => {
+        let v = parseInt(octaveInput.value, 10);
+        if (isNaN(v)) v = 0;
+        if (v > 4) v = 4;
+        if (v < -4) v = -4;
+        currentOctaveOffset = v;
+        updateOctaveDisplay();
+    });
+    // 移調入力欄のイベント
+    const transposeInput = document.getElementById("transposeInput");
+    transposeInput.addEventListener("input", () => {
+        let v = parseInt(transposeInput.value, 10);
+        if (isNaN(v)) v = 0;
+        if (v > 24) v = 24;
+        if (v < -24) v = -24;
+        transpose = v;
+        updateTransposeDisplay();
+    });
+});
+
+// --- Sortable.jsでタッチ対応ドラッグ順序 ---
+new Sortable(document.getElementById('mappingTable'), {
+    animation: 150,
+    handle: 'td:first-child',
+    onEnd: function (evt) {
+        const rows = document.querySelectorAll("#mappingTable tr");
+        const newMap = [];
+        rows.forEach((row, i) => {
+            if (i === 0) return;
+            const key = row.querySelector('input').value;
+            const note = row.querySelectorAll('input')[1].value;
+            const color = row.querySelector('select').value;
+            newMap.push({ key, note, color });
+        });
+        keyMapJP = newMap; autoSaveMap(); renderKeyboard();
+    }
+});
+
+// --- ページ読み込み時自動読み込み ---
+window.addEventListener("load", () => {
+    const loaded = localStorage.getItem("keyMapJP");
+    if (loaded) {
+        keyMapJP = JSON.parse(loaded); renderMappingTable
+            (); renderKeyboard();
+    }
+    updateOctaveDisplay();
+    updateTransposeDisplay();
+    renderWaveKeyTable();
+    showWelcomeModalIfNeeded();
+});
+
+// 初期描画
+renderKeyboard(); renderMappingTable();
+updateOctaveDisplay();
+updateTransposeDisplay();
+renderWaveKeyTable();
+
+// --- 楽器ファンクションキー設定UI ---
+function renderWaveKeyTable() {
+    const table = document.getElementById("waveKeyTable");
+    table.innerHTML = "<tr><th>ファンクションキー</th><th>楽器</th></tr>";
+    Object.keys(waveKeyMap).forEach(fkey => {
+        const row = table.insertRow();
+        const cellKey = row.insertCell();
+        cellKey.textContent = fkey;
+        const cellWave = row.insertCell();
+        const select = document.createElement("select");
+        [
+            { value: "sine", label: "サイン波" },
+            { value: "piano", label: "ピアノ" },
+            { value: "violin", label: "バイオリン" },
+            { value: "clarinet", label: "クラリネット" },
+            { value: "flute", label: "フルート" },
+            { value: "brass", label: "ブラス" },
+            { value: "sax", label: "サックス" },
+            { value: "guitar", label: "ギター" },
+            { value: "bass", label: "ベース" },
+            { value: "marimba", label: "マリンバ" },
+            { value: "vibraphone", label: "ビブラフォン" },
+            { value: "organ", label: "オルガン" },
+            { value: "synth", label: "シンセ" },
+            { value: "square", label: "矩形波" },
+            { value: "triangle", label: "三角波" },
+            { value: "sawtooth", label: "ノコギリ波" }
+        ].forEach(obj => {
+            const opt = document.createElement("option");
+            opt.value = obj.value;
+            opt.textContent = obj.label;
+            if (waveKeyMap[fkey] === obj.value) opt.selected = true;
+            select.appendChild(opt);
+        });
+        select.addEventListener("change", () => {
+            waveKeyMap[fkey] = select.value;
+        });
+        cellWave.appendChild(select);
+    });
+}
+
+document.getElementById("openWaveKeyModal").addEventListener("click", () => {
+    renderWaveKeyTable();
+    document.getElementById("waveKeyModal").style.display = "flex";
+});
+document.querySelector(".wavekey-modal-close").addEventListener("click", () => {
+    document.getElementById("waveKeyModal").style.display = "none";
+});
+window.addEventListener("click", e => {
+    if (e.target === document.getElementById("waveKeyModal")) document.getElementById("waveKeyModal").style.display = "none";
+});
+document.getElementById("resetWaveKeyMap").addEventListener("click", () => {
+    waveKeyMap = { F1: "sine", F2: "square", F3: "triangle", F4: "sawtooth" };
+    renderWaveKeyTable();
+});
+
+document.getElementById("clearLocalStorage").addEventListener("click", () => {
+    if (confirm("ローカルストレージを削除して初期状態に戻します。よろしいですか？")) {
+        localStorage.removeItem("keyMapJP");
+        localStorage.removeItem("instrumentParams"); // 楽器パラメータも消す
+        // 必要なら他の設定も初期化
+        location.reload();
+    }
+});
+
+// --- ようこそモーダル ---
+function showWelcomeModalIfNeeded() {
+    if (!localStorage.getItem("welcomeModalClosed")) {
+        document.getElementById("welcomeModal").style.display = "flex";
+    }
+}
+document.getElementById("welcomeOk").addEventListener("click", () => {
+    document.getElementById("welcomeModal").style.display = "none";
+    localStorage.setItem("welcomeModalClosed", "1");
+});
+document.getElementById("welcomeClose").addEventListener("click", () => {
+    document.getElementById("welcomeModal").style.display = "none";
+    localStorage.setItem("welcomeModalClosed", "1");
+});
+window.addEventListener("click", e => {
+    if (e.target === document.getElementById("welcomeModal")) {
+        document.getElementById("welcomeModal").style.display = "none";
+        localStorage.setItem("welcomeModalClosed", "1");
+    }
+});
+
+// 楽器ごとの音色パラメータ
+const instrumentParams = {
+    piano: {
+        harmonics: [
+            { ratio: 1, gain: 1.0 },
+            { ratio: 2, gain: 0.4 },
+            { ratio: 3, gain: 0.2 }
+        ],
+        envelope: { attack: 0.01, decay: 1.2, sustain: 0, release: 0.1 }
+    },
+    violin: {
+        type: "sawtooth",
+        vibrato: { freq: 6, depth: 3 },
+        envelope: { attack: 0.05, decay: 0.2, sustain: 1, release: 0.2 }
+    },
+    clarinet: {
+        harmonics: [
+            { ratio: 1, gain: 1.0 },
+            { ratio: 3, gain: 0.5 },
+            { ratio: 5, gain: 0.3 }
+        ],
+        type: "square",
+        envelope: { attack: 0.05, decay: 0.3, sustain: 1, release: 0.2 }
+    },
+    flute: {
+        type: "sine",
+        noise: 0.03,
+        envelope: { attack: 0.03, decay: 0.2, sustain: 1, release: 0.2 }
+    },
+    brass: {
+        harmonics: [
+            { ratio: 1, gain: 1.0 },
+            { ratio: 2, gain: 0.5 }
+        ],
+        type: "sawtooth",
+        envelope: { attack: 0.03, decay: 0.3, sustain: 1, release: 0.2 }
+    },
+    sax: {
+        harmonics: [
+            { ratio: 1, gain: 1.0 },
+            { ratio: 2, gain: 0.5 }
+        ],
+        type: "triangle",
+        vibrato: { freq: 7, depth: 4 },
+        envelope: { attack: 0.03, decay: 0.3, sustain: 1, release: 0.2 }
+    },
+    guitar: {
+        type: "triangle",
+        envelope: { attack: 0.01, decay: 1.0, sustain: 0, release: 0.1 }
+    },
+    bass: {
+        type: "square",
+        envelope: { attack: 0.01, decay: 1.2, sustain: 0, release: 0.1 }
+    },
+    marimba: {
+        harmonics: [
+            { ratio: 1, gain: 1.0 },
+            { ratio: 4, gain: 0.5 },
+            { ratio: 10, gain: 0.2 }
+        ],
+        type: "sine",
+        envelope: { attack: 0.01, decay: 0.5, sustain: 0, release: 0.1 }
+    },
+    vibraphone: {
+        harmonics: [
+            { ratio: 1, gain: 1.0 },
+            { ratio: 2, gain: 0.3 }
+        ],
+        type: "sine",
+        vibrato: { freq: 5.5, depth: 6 },
+        envelope: { attack: 0.01, decay: 1.2, sustain: 0, release: 0.1 }
+    },
+    organ: {
+        harmonics: [
+            { ratio: 1, gain: 1.0 },
+            { ratio: 2, gain: 0.5 },
+            { ratio: 4, gain: 0.3 }
+        ],
+        type: "sine",
+        envelope: { attack: 0.01, decay: 0.1, sustain: 1, release: 0.2 }
+    },
+    synth: {
+        harmonics: [
+            { ratio: 1, gain: 1.0 },
+            { ratio: 2, gain: 0.5 }
+        ],
+        type: "sawtooth",
+        envelope: { attack: 0.01, decay: 0.8, sustain: 1, release: 0.2 }
+    }
+};
+
+// --- 楽器パラメータ保存・復元 ---
+function saveInstrumentParams() {
+    localStorage.setItem("instrumentParams", JSON.stringify(instrumentParams));
+}
+function loadInstrumentParams() {
+    const data = localStorage.getItem("instrumentParams");
+    if (data) {
+        try {
+            const obj = JSON.parse(data);
+            // 既存のinstrumentParamsにマージ
+            for (const k in obj) {
+                if (instrumentParams[k]) {
+                    Object.assign(instrumentParams[k], obj[k]);
+                } else {
+                    instrumentParams[k] = obj[k];
+                }
+            }
+        } catch (e) { }
+    }
+}
+// 起動時に復元
+loadInstrumentParams();
+
+// --- 楽器パラメータ編集UI ---
+document.getElementById("editInstrumentParam").addEventListener("click", () => {
+    const inst = document.getElementById("instrument").value;
+    showInstrumentParamModal(inst);
+});
+
+function showInstrumentParamModal(inst) {
+    const modal = document.getElementById("instrumentParamModal");
+    const form = document.getElementById("instrumentParamForm");
+    const param = instrumentParams[inst];
+    if (!param) {
+        form.innerHTML = "<div>この楽器は編集できません。</div>";
+    } else {
+        let html = "";
+        // envelope
+        if (param.envelope) {
+            html += "<h4>エンベロープ</h4>";
+            for (const key of ["attack", "decay", "sustain", "release"]) {
+                html += `<label>${key}: <input type="number" step="0.01" min="0" id="env_${key}" value="${param.envelope[key] ?? 0}" style="width:60px"></label><br>`;
+            }
+        }
+        // harmonics
+        if (param.harmonics) {
+            html += "<h4>倍音</h4>";
+            param.harmonics.forEach((h, i) => {
+                html += `比率: <input type="number" step="0.1" min="0" id="harm_ratio_${i}" value="${h.ratio}" style="width:50px"> `;
+                html += `ゲイン: <input type="number" step="0.01" min="0" max="1" id="harm_gain_${i}" value="${h.gain}" style="width:50px"> `;
+                html += `<button type="button" onclick="removeHarmonic(${i})">削除</button><br>`;
+            });
+            html += `<button type="button" onclick="addHarmonic()">倍音追加</button><br>`;
+        }
+        // vibrato
+        if (param.vibrato) {
+            html += "<h4>ビブラート</h4>";
+            html += `freq: <input type="number" step="0.1" min="0" id="vib_freq" value="${param.vibrato.freq}" style="width:60px"> `;
+            html += `depth: <input type="number" step="0.1" min="0" id="vib_depth" value="${param.vibrato.depth}" style="width:60px"><br>`;
+        }
+        // type
+        if (param.type) {
+            html += `<h4>波形</h4><input type="text" id="osc_type" value="${param.type}" style="width:100px"><br>`;
+        }
+        // noise
+        if (typeof param.noise === "number") {
+            html += `<h4>ノイズ</h4><input type="number" step="0.01" min="0" max="1" id="osc_noise" value="${param.noise}" style="width:60px"><br>`;
+        }
+        form.innerHTML = html;
+    }
+    modal.style.display = "flex";
+    // 倍音追加・削除用
+    window.addHarmonic = function () {
+        param.harmonics = param.harmonics || [];
+        param.harmonics.push({ ratio: 1, gain: 0.1 });
+        showInstrumentParamModal(inst);
+    };
+    window.removeHarmonic = function (idx) {
+        param.harmonics.splice(idx, 1);
+        showInstrumentParamModal(inst);
+    };
+}
+
+document.getElementById("instrumentParamClose").onclick = () => {
+    document.getElementById("instrumentParamModal").style.display = "none";
+};
+document.getElementById("instrumentParamSave").onclick = () => {
+    const inst = document.getElementById("instrument").value;
+    const param = instrumentParams[inst];
+    if (!param) return;
+    // envelope
+    if (param.envelope) {
+        for (const key of ["attack", "decay", "sustain", "release"]) {
+            const v = parseFloat(document.getElementById("env_" + key).value);
+            param.envelope[key] = isNaN(v) ? 0 : v;
+        }
+    }
+    // harmonics
+    if (param.harmonics) {
+        for (let i = 0; i < param.harmonics.length; i++) {
+            const ratio = parseFloat(document.getElementById("harm_ratio_" + i).value);
+            const gain = parseFloat(document.getElementById("harm_gain_" + i).value);
+            param.harmonics[i].ratio = isNaN(ratio) ? 1 : ratio;
+            param.harmonics[i].gain = isNaN(gain) ? 0 : gain;
+        }
+    }
+    // vibrato
+    if (param.vibrato) {
+        const freq = parseFloat(document.getElementById("vib_freq").value);
+        const depth = parseFloat(document.getElementById("vib_depth").value);
+        param.vibrato.freq = isNaN(freq) ? 0 : freq;
+        param.vibrato.depth = isNaN(depth) ? 0 : depth;
+    }
+    // type
+    if (param.type) {
+        param.type = document.getElementById("osc_type").value;
+    }
+    // noise
+    if (typeof param.noise === "number") {
+        const n = parseFloat(document.getElementById("osc_noise").value);
+        param.noise = isNaN(n) ? 0 : n;
+    }
+    document.getElementById("instrumentParamModal").style.display = "none";
+    saveInstrumentParams();
+};
+window.addEventListener("click", e => {
+    if (e.target === document.getElementById("instrumentParamModal")) {
+        document.getElementById("instrumentParamModal").style.display = "none";
+    }
+});
