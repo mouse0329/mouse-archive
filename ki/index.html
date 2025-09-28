@@ -190,6 +190,10 @@
         </select>
         <label><input type="checkbox" id="showNoteLabel" checked> 鍵盤に音符表示</label>
         <button id="openModal">マッピング設定</button>
+        <label style="margin-left:10px;font-weight:bold;">
+            オクターブ:
+            <input id="octaveInput" type="number" value="0" min="-4" max="4" style="width:50px;text-align:right;">
+        </label>
     </div>
 
     <div id="keyboard"></div>
@@ -214,6 +218,7 @@
     <script>
         // 初期マップ
         let keyMapJP = [
+            // C4〜B4
             { key: "A", note: "C4", color: "白" },
             { key: "W", note: "C#4", color: "黒" },
             { key: "S", note: "D4", color: "白" },
@@ -228,8 +233,25 @@
             { key: "U", note: "A#4", color: "黒" },
             { key: "J", note: "B4", color: "白" },
 
-            { key: "K", note: "C5", color: "白" }
+            // C5〜B5
+            { key: "K", note: "C5", color: "白" },
+            { key: "O", note: "C#5", color: "黒" },
+            { key: "L", note: "D5", color: "白" },
+            { key: "P", note: "D#5", color: "黒" },
+            { key: ";", note: "E5", color: "白" },
+
+            { key: "'", note: "F5", color: "白" },
+            { key: "]", note: "F#5", color: "黒" },
+            { key: "\\", note: "G5", color: "白" },
+            { key: "1", note: "G#5", color: "黒" },
+            { key: "2", note: "A5", color: "白" },
+            { key: "3", note: "A#5", color: "黒" },
+            { key: "4", note: "B5", color: "白" },
+
+            // C6
+            { key: "5", note: "C6", color: "白" }
         ];
+
 
         let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let activeOsc = {};
@@ -385,19 +407,47 @@
         // タッチ・キー操作
         document.addEventListener("keydown", e => {
             if (e.key.startsWith("F")) { e.preventDefault(); return; }
-            if (e.key === "ArrowUp") { currentOctaveOffset++; return; }
-            if (e.key === "ArrowDown") { currentOctaveOffset--; return; }
+            if (e.key === "ArrowUp") {
+                currentOctaveOffset++;
+                if (currentOctaveOffset > 4) currentOctaveOffset = 4;
+                updateOctaveDisplay();
+                return;
+            }
+            if (e.key === "ArrowDown") {
+                currentOctaveOffset--;
+                if (currentOctaveOffset < -4) currentOctaveOffset = -4;
+                updateOctaveDisplay();
+                return;
+            }
             playStart(e.key);
-            playStart(e.code); // 追加: codeでも検索
+            playStart(e.code);
         });
         document.addEventListener("keyup", e => {
             playStop(e.key);
-            playStop(e.code); // 追加: codeでも検索
+            playStop(e.code);
         });
 
         // 音符ラベル表示切替
         document.getElementById("showNoteLabel").addEventListener("change", (e) => {
             showNoteLabel = e.target.checked; renderKeyboard();
+        });
+
+        // オクターブ表示更新
+        function updateOctaveDisplay() {
+            document.getElementById("octaveInput").value = currentOctaveOffset;
+        }
+
+        // オクターブ入力欄のイベント
+        document.addEventListener("DOMContentLoaded", () => {
+            const octaveInput = document.getElementById("octaveInput");
+            octaveInput.addEventListener("input", () => {
+                let v = parseInt(octaveInput.value, 10);
+                if (isNaN(v)) v = 0;
+                if (v > 4) v = 4;
+                if (v < -4) v = -4;
+                currentOctaveOffset = v;
+                updateOctaveDisplay();
+            });
         });
 
         // --- Sortable.jsでタッチ対応ドラッグ順序 ---
@@ -425,10 +475,12 @@
                 keyMapJP = JSON.parse(loaded); renderMappingTable
                     (); renderKeyboard();
             }
+            updateOctaveDisplay();
         });
 
         // 初期描画
         renderKeyboard(); renderMappingTable();
+        updateOctaveDisplay();
     </script>
 
 </body>
