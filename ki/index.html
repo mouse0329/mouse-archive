@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>完全版モバイルシンセ</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: #f4f4f9;
+            color: #222;
+            padding: 10px;
+            margin: 0;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        #keyboard {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 5px 0;
+            justify-content: center;
+            position: relative;
+        }
+
+        .key {
+            flex: 0 0 auto;
+            width: 50px;
+            height: 160px;
+            margin: 1px;
+            background: #fff;
+            text-align: center;
+            line-height: 160px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+            user-select: none;
+            font-size: 14px;
+            position: relative;
+        }
+
+        .key.black {
+            background: #333;
+            color: white;
+            width: 30px;
+            height: 100px;
+            line-height: 100px;
+            margin-left: -15px;
+            margin-right: -15px;
+            z-index: 2;
+        }
+
+        .key.active {
+            background: orange;
+            transform: translateY(4px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .controls select,
+        .controls button {
+            padding: 6px 10px;
+            margin: 2px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: #fff;
+            color: #222;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .controls select:hover,
+        .controls button:hover {
+            background: #f0f0f0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 16px;
+            border-radius: 10px;
+            width: 95%;
+            max-width: 480px;
+            max-height: 90%;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            float: right;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 20px;
+            color: #888;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 4px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        input,
+        select {
+            width: 60px;
+            text-align: center;
+            border-radius: 4px;
+            padding: 2px;
+            border: 1px solid #ccc;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #4e9af1;
+            box-shadow: 0 0 4px rgba(78, 154, 241, 0.5);
+        }
+
+        #mappingTable tr.dragging {
+            opacity: 0.5;
+            background: #e0f0ff;
+        }
+
+        #mappingTable tr.over {
+            border-top: 3px solid #4e9af1;
+        }
+
+        @media(max-width:600px) {
+            .key {
+                width: 40px;
+                height: 120px;
+                line-height: 120px;
+                font-size: 12px;
+            }
+
+            .key.black {
+                width: 24px;
+                height: 80px;
+                line-height: 80px;
+                margin-left: -12px;
+                margin-right: -12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>完全版モバイルシンセ</h2>
+    <div class="controls">
+        波形:
+        <select id="waveform">
+            <option value="sine">サイン波</option>
+            <option value="square">矩形波</option>
+            <option value="triangle">三角波</option>
+            <option value="sawtooth">ノコギリ波</option>
+        </select>
+        <label><input type="checkbox" id="showNoteLabel" checked> 鍵盤に音符表示</label>
+        <button id="openModal">マッピング設定</button>
+    </div>
+
+    <div id="keyboard"></div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h3>マッピング設定</h3>
+            <table id="mappingTable">
+                <tr>
+                    <th>順番</th>
+                    <th>キー</th>
+                    <th>音</th>
+                    <th>色</th>
+                </tr>
+            </table>
+            <button id="addMapping">新しいマッピングを追加</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+        // 初期マップ
+        let keyMapJP = [
+            { key: "1", note: "C4", color: "白" }, { key: "2", note: "D4", color: "白" }, { key: "3", note: "E4", color: "白" },
+            { key: "4", note: "F4", color: "白" }, { key: "5", note: "G4", color: "白" }, { key: "6", note: "A4", color: "白" },
+            { key: "7", note: "B4", color: "白" }, { key: "8", note: "C5", color: "白" }, { key: "9", note: "D5", color: "白" },
+            { key: "0", note: "E5", color: "白" }
+        ];
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let activeOsc = {};
+        let currentOctaveOffset = 0;
+        let showNoteLabel = true;
+
+        // 音楽記号→周波数
+        function noteToFreq(note) {
+            const notes = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
+            const match = note.match(/^([A-G]#?)(\d)$/); if (!match) return null;
+            const [_, n, octave] = match;
+            return 440 * Math.pow(2, (notes[n] + (parseInt(octave) - 4) * 12 - 9) / 12);
+        }
+
+        // 再生開始
+        function playStart(key) {
+            const mapping = keyMapJP.find(k => k.key === key); if (!mapping) return;
+            let freq = isNaN(mapping.note) ? noteToFreq(mapping.note) : parseFloat(mapping.note); if (!freq) return;
+            freq *= Math.pow(2, currentOctaveOffset); if (activeOsc[key]) return;
+            const keyDiv = document.querySelector(`.key[data-key='${key}']`);
+            if (keyDiv) keyDiv.classList.add("active");
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = document.getElementById("waveform").value;
+            osc.frequency.value = freq;
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            osc.start();
+            activeOsc[key] = { osc, gain };
+        }
+
+        // 再生停止
+        function playStop(key) {
+            const o = activeOsc[key]; if (o) { o.gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); o.osc.stop(audioCtx.currentTime + 0.1); delete activeOsc[key]; }
+            const keyDiv = document.querySelector(`.key[data-key='${key}']`); if (keyDiv) keyDiv.classList.remove("active");
+        }
+
+        // キーボード描画
+        function renderKeyboard() {
+            const kb = document.getElementById("keyboard"); kb.innerHTML = "";
+            keyMapJP.forEach(mapping => {
+                const div = document.createElement("div"); div.className = "key";
+                if (mapping.color === "黒") div.classList.add("black");
+                div.dataset.key = mapping.key;
+                div.textContent = mapping.key; // 真ん中にキー文字
+                if (showNoteLabel) {
+                    const span = document.createElement("div");
+                    span.style.position = "absolute";
+                    span.style.bottom = "-20px";   // 下端に表示
+                    span.style.width = "100%";
+                    span.style.textAlign = "center";
+                    span.style.fontSize = "12px";
+                    span.style.color = (mapping.color === "黒" ? "#fff" : "#000");
+                    span.textContent = mapping.note;
+                    div.appendChild(span);
+                }
+
+                div.addEventListener("mousedown", () => playStart(mapping.key));
+                div.addEventListener("mouseup", () => playStop(mapping.key));
+                div.addEventListener("mouseleave", () => playStop(mapping.key));
+                div.addEventListener("touchstart", (e) => { e.preventDefault(); playStart(mapping.key); });
+                div.addEventListener("touchend", (e) => { e.preventDefault(); playStop(mapping.key); });
+                kb.appendChild(div);
+            });
+        }
+
+        // 自動保存
+        function autoSaveMap() { localStorage.setItem("keyMapJP", JSON.stringify(keyMapJP)); }
+
+        // マッピングテーブル描画
+        function renderMappingTable() {
+            const table = document.getElementById("mappingTable");
+            table.innerHTML = "<tr><th>順番</th><th>キー</th><th>音</th><th>色</th><th>削除</th></tr>";
+
+            keyMapJP.forEach((mapping, index) => {
+                const row = table.insertRow();
+                row.dataset.index = index;
+
+                // 順番ドラッグ用
+                const cellOrder = row.insertCell(); cellOrder.textContent = "☰";
+
+                // キー入力
+                const cellKey = row.insertCell();
+                const inputKey = document.createElement("input");
+                inputKey.value = mapping.key;
+                inputKey.maxLength = 1;
+                inputKey.addEventListener("input", () => { mapping.key = inputKey.value; renderKeyboard(); autoSaveMap(); });
+                cellKey.appendChild(inputKey);
+
+                // 音入力
+                const cellNote = row.insertCell();
+                const inputNote = document.createElement("input");
+                inputNote.value = mapping.note;
+                inputNote.addEventListener("input", () => { mapping.note = inputNote.value; renderKeyboard(); autoSaveMap(); });
+                cellNote.appendChild(inputNote);
+
+                // 色選択
+                const cellColor = row.insertCell();
+                const selectColor = document.createElement("select");
+                ["白", "黒"].forEach(c => {
+                    const opt = document.createElement("option");
+                    opt.value = c; opt.textContent = c;
+                    if (c === mapping.color) opt.selected = true;
+                    selectColor.appendChild(opt);
+                });
+                selectColor.addEventListener("change", () => { mapping.color = selectColor.value; renderKeyboard(); autoSaveMap(); });
+                cellColor.appendChild(selectColor);
+
+                // 🔹削除ボタン追加
+                const cellDelete = row.insertCell();
+                const delBtn = document.createElement("button");
+                delBtn.textContent = "削除";
+                delBtn.style.background = "#fff";
+                delBtn.style.color = "#222";
+                delBtn.style.border = "1px solid #ccc";
+                delBtn.style.borderRadius = "4px";
+                delBtn.style.cursor = "pointer";
+                delBtn.addEventListener("click", () => {
+                    keyMapJP.splice(index, 1);
+                    renderMappingTable();
+                    renderKeyboard();
+                    autoSaveMap();
+                });
+                cellDelete.appendChild(delBtn);
+            });
+        }
+
+
+        // 新規マッピング
+        document.getElementById("addMapping").addEventListener("click", () => {
+            const key = prompt("追加するキーを入力してチュー:"); if (!key) return;
+            const note = prompt("割り当てる音(C4など)を入力してチュー:"); if (!note) return;
+            keyMapJP.push({ key, note, color: "白" }); renderMappingTable(); renderKeyboard(); autoSaveMap();
+        });
+
+        // モーダル操作
+        const modal = document.getElementById("modal");
+        document.getElementById("openModal").addEventListener("click", () => { modal.style.display = "flex"; });
+        document.querySelector(".modal-close").addEventListener("click", () => { modal.style.display = "none"; });
+        window.addEventListener("click", e => { if (e.target === modal) modal.style.display = "none"; });
+
+        // タッチ・キー操作
+        document.addEventListener("keydown", e => {
+            if (e.key.startsWith("F")) { e.preventDefault(); return; }
+            if (e.key === "ArrowUp") { currentOctaveOffset++; return; }
+            if (e.key === "ArrowDown") { currentOctaveOffset--; return; }
+            playStart(e.key);
+        });
+        document.addEventListener("keyup", e => playStop(e.key));
+
+        // 音符ラベル表示切替
+        document.getElementById("showNoteLabel").addEventListener("change", (e) => {
+            showNoteLabel = e.target.checked; renderKeyboard();
+        });
+
+        // --- Sortable.jsでタッチ対応ドラッグ順序 ---
+        new Sortable(document.getElementById('mappingTable'), {
+            animation: 150,
+            handle: 'td:first-child',
+            onEnd: function (evt) {
+                const rows = document.querySelectorAll("#mappingTable tr");
+                const newMap = [];
+                rows.forEach((row, i) => {
+                    if (i === 0) return;
+                    const key = row.querySelector('input').value;
+                    const note = row.querySelectorAll('input')[1].value;
+                    const color = row.querySelector('select').value;
+                    newMap.push({ key, note, color });
+                });
+                keyMapJP = newMap; autoSaveMap(); renderKeyboard();
+            }
+        });
+
+        // --- ページ読み込み時自動読み込み ---
+        window.addEventListener("load", () => {
+            const loaded = localStorage.getItem("keyMapJP");
+            if (loaded) {
+                keyMapJP = JSON.parse(loaded); renderMappingTable
+                    (); renderKeyboard();
+            }
+        });
+
+        // 初期描画
+        renderKeyboard(); renderMappingTable();
+    </script>
+
+</body>
+
+</html>
