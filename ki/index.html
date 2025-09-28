@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>完全版モバイルシンセ</title>
+    <title>デジタルシンセサイザーweb</title>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, sans-serif;
@@ -180,7 +180,7 @@
 
 <body>
 
-    <h2>完全版モバイルシンセ</h2>
+    <h2>デジタルシンセサイザーweb</h2>
     <div class="controls">
         波形:
         <select id="waveform">
@@ -215,11 +215,23 @@
     <script>
         // 初期マップ
         let keyMapJP = [
-            { key: "1", note: "C4", color: "白" }, { key: "2", note: "D4", color: "白" }, { key: "3", note: "E4", color: "白" },
-            { key: "4", note: "F4", color: "白" }, { key: "5", note: "G4", color: "白" }, { key: "6", note: "A4", color: "白" },
-            { key: "7", note: "B4", color: "白" }, { key: "8", note: "C5", color: "白" }, { key: "9", note: "D5", color: "白" },
-            { key: "0", note: "E5", color: "白" }
+            { key: "A", note: "C4", color: "白" },
+            { key: "W", note: "C#4", color: "黒" },
+            { key: "S", note: "D4", color: "白" },
+            { key: "E", note: "D#4", color: "黒" },
+            { key: "D", note: "E4", color: "白" },
+
+            { key: "F", note: "F4", color: "白" },
+            { key: "T", note: "F#4", color: "黒" },
+            { key: "G", note: "G4", color: "白" },
+            { key: "Y", note: "G#4", color: "黒" },
+            { key: "H", note: "A4", color: "白" },
+            { key: "U", note: "A#4", color: "黒" },
+            { key: "J", note: "B4", color: "白" },
+
+            { key: "K", note: "C5", color: "白" }
         ];
+
         let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let activeOsc = {};
         let currentOctaveOffset = 0;
@@ -234,11 +246,16 @@
         }
 
         // 再生開始
-        function playStart(key) {
-            const mapping = keyMapJP.find(k => k.key === key); if (!mapping) return;
+        function playStart(keyOrCode) {
+            // e.key, e.code両対応・大文字小文字無視
+            const mapping = keyMapJP.find(k =>
+                k.key.toLowerCase() === keyOrCode.toLowerCase() ||
+                (k.code && k.code === keyOrCode)
+            );
+            if (!mapping) return;
             let freq = isNaN(mapping.note) ? noteToFreq(mapping.note) : parseFloat(mapping.note); if (!freq) return;
-            freq *= Math.pow(2, currentOctaveOffset); if (activeOsc[key]) return;
-            const keyDiv = document.querySelector(`.key[data-key='${key}']`);
+            freq *= Math.pow(2, currentOctaveOffset); if (activeOsc[mapping.key]) return;
+            const keyDiv = document.querySelector(`.key[data-key='${mapping.key}']`);
             if (keyDiv) keyDiv.classList.add("active");
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -247,13 +264,19 @@
             osc.connect(gain); gain.connect(audioCtx.destination);
             gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
             osc.start();
-            activeOsc[key] = { osc, gain };
+            activeOsc[mapping.key] = { osc, gain };
         }
 
         // 再生停止
-        function playStop(key) {
-            const o = activeOsc[key]; if (o) { o.gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); o.osc.stop(audioCtx.currentTime + 0.1); delete activeOsc[key]; }
-            const keyDiv = document.querySelector(`.key[data-key='${key}']`); if (keyDiv) keyDiv.classList.remove("active");
+        function playStop(keyOrCode) {
+            const mapping = keyMapJP.find(k =>
+                k.key.toLowerCase() === keyOrCode.toLowerCase() ||
+                (k.code && k.code === keyOrCode)
+            );
+            if (!mapping) return;
+            const o = activeOsc[mapping.key];
+            if (o) { o.gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); o.osc.stop(audioCtx.currentTime + 0.1); delete activeOsc[mapping.key]; }
+            const keyDiv = document.querySelector(`.key[data-key='${mapping.key}']`); if (keyDiv) keyDiv.classList.remove("active");
         }
 
         // キーボード描画
@@ -366,8 +389,12 @@
             if (e.key === "ArrowUp") { currentOctaveOffset++; return; }
             if (e.key === "ArrowDown") { currentOctaveOffset--; return; }
             playStart(e.key);
+            playStart(e.code); // 追加: codeでも検索
         });
-        document.addEventListener("keyup", e => playStop(e.key));
+        document.addEventListener("keyup", e => {
+            playStop(e.key);
+            playStop(e.code); // 追加: codeでも検索
+        });
 
         // 音符ラベル表示切替
         document.getElementById("showNoteLabel").addEventListener("change", (e) => {
