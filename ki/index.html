@@ -185,6 +185,15 @@
         <select id="instrument">
             <option value="sine">サイン波</option>
             <option value="piano">ピアノ</option>
+            <option value="violin">バイオリン</option>
+            <option value="clarinet">クラリネット</option>
+            <option value="flute">フルート</option>
+            <option value="brass">ブラス</option>
+            <option value="sax">サックス</option>
+            <option value="guitar">ギター</option>
+            <option value="bass">ベース</option>
+            <option value="marimba">マリンバ</option>
+            <option value="vibraphone">ビブラフォン</option>
             <option value="organ">オルガン</option>
             <option value="synth">シンセ</option>
             <option value="square">矩形波</option>
@@ -314,8 +323,8 @@
         let waveKeyMap = {
             F1: "sine",
             F2: "piano",
-            F3: "organ",
-            F4: "synth"
+            F3: "violin",
+            F4: "clarinet"
         };
 
         // 移調値
@@ -345,7 +354,7 @@
 
             // 楽器選択
             const instrument = document.getElementById("instrument").value;
-            let osc, gain, osc2, osc3;
+            let osc, gain, osc2, osc3, osc4, osc5;
             gain = audioCtx.createGain();
 
             if (instrument === "sine" || instrument === "square" || instrument === "triangle" || instrument === "sawtooth") {
@@ -378,8 +387,175 @@
                 osc2.start();
                 osc3.start();
                 activeOsc[mapping.key] = { osc, osc2, osc3, gain };
+            } else if (instrument === "violin") {
+                // バイオリン風: ノコギリ波+弱いビブラート
+                osc = audioCtx.createOscillator();
+                osc.type = "sawtooth";
+                osc.frequency.value = freq;
+                // ビブラート
+                let lfo = audioCtx.createOscillator();
+                let lfoGain = audioCtx.createGain();
+                lfo.frequency.value = 6;
+                lfoGain.gain.value = 3;
+                lfo.connect(lfoGain);
+                lfoGain.connect(osc.frequency);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 2.0);
+                osc.start();
+                lfo.start();
+                activeOsc[mapping.key] = { osc, gain, lfo, lfoGain };
+            } else if (instrument === "clarinet") {
+                // クラリネット風: 奇数倍音の矩形波+弱いエンベロープ
+                osc = audioCtx.createOscillator();
+                osc.type = "square";
+                osc.frequency.value = freq;
+                osc2 = audioCtx.createOscillator();
+                osc2.type = "square";
+                osc2.frequency.value = freq * 3;
+                osc3 = audioCtx.createOscillator();
+                osc3.type = "square";
+                osc3.frequency.value = freq * 5;
+                osc.connect(gain);
+                osc2.connect(gain);
+                osc3.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.13, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+                osc.start();
+                osc2.start();
+                osc3.start();
+                activeOsc[mapping.key] = { osc, osc2, osc3, gain };
+            } else if (instrument === "flute") {
+                // フルート風: サイン波+弱いノイズ
+                osc = audioCtx.createOscillator();
+                osc.type = "sine";
+                osc.frequency.value = freq;
+                osc.connect(gain);
+                // ノイズ
+                let bufferSize = 256;
+                let noise = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+                noise.onaudioprocess = function (e) {
+                    let output = e.outputBuffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        output[i] = (Math.random() * 2 - 1) * 0.03;
+                    }
+                };
+                noise.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                osc.start();
+                activeOsc[mapping.key] = { osc, gain, noise };
+            } else if (instrument === "brass") {
+                // ブラス風: ノコギリ波+矩形波+アタック
+                osc = audioCtx.createOscillator();
+                osc.type = "sawtooth";
+                osc.frequency.value = freq;
+                osc2 = audioCtx.createOscillator();
+                osc2.type = "square";
+                osc2.frequency.value = freq * 2;
+                osc.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.0);
+                osc.start();
+                osc2.start();
+                activeOsc[mapping.key] = { osc, osc2, gain };
+            } else if (instrument === "sax") {
+                // サックス風: 三角波+矩形波+弱いビブラート
+                osc = audioCtx.createOscillator();
+                osc.type = "triangle";
+                osc.frequency.value = freq;
+                osc2 = audioCtx.createOscillator();
+                osc2.type = "square";
+                osc2.frequency.value = freq * 2;
+                // ビブラート
+                let lfo = audioCtx.createOscillator();
+                let lfoGain = audioCtx.createGain();
+                lfo.frequency.value = 7;
+                lfoGain.gain.value = 4;
+                lfo.connect(lfoGain);
+                lfoGain.connect(osc.frequency);
+                osc.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                osc.start();
+                osc2.start();
+                lfo.start();
+                activeOsc[mapping.key] = { osc, osc2, gain, lfo, lfoGain };
+            } else if (instrument === "guitar") {
+                // ギター風: 三角波+減衰
+                osc = audioCtx.createOscillator();
+                osc.type = "triangle";
+                osc.frequency.value = freq;
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.0);
+                osc.start();
+                activeOsc[mapping.key] = { osc, gain };
+            } else if (instrument === "bass") {
+                // ベース風: 矩形波+減衰
+                osc = audioCtx.createOscillator();
+                osc.type = "square";
+                osc.frequency.value = freq;
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                osc.start();
+                activeOsc[mapping.key] = { osc, gain };
+            } else if (instrument === "marimba") {
+                // マリンバ風: サイン波+倍音+短い減衰
+                osc = audioCtx.createOscillator();
+                osc.type = "sine";
+                osc.frequency.value = freq;
+                osc2 = audioCtx.createOscillator();
+                osc2.type = "sine";
+                osc2.frequency.value = freq * 4.0;
+                osc3 = audioCtx.createOscillator();
+                osc3.type = "sine";
+                osc3.frequency.value = freq * 10.0;
+                osc.connect(gain);
+                osc2.connect(gain);
+                osc3.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc2.start();
+                osc3.start();
+                activeOsc[mapping.key] = { osc, osc2, osc3, gain };
+            } else if (instrument === "vibraphone") {
+                // ビブラフォン風: サイン波+倍音+ビブラート
+                osc = audioCtx.createOscillator();
+                osc.type = "sine";
+                osc.frequency.value = freq;
+                osc2 = audioCtx.createOscillator();
+                osc2.type = "sine";
+                osc2.frequency.value = freq * 2.0;
+                // ビブラート
+                let lfo = audioCtx.createOscillator();
+                let lfoGain = audioCtx.createGain();
+                lfo.frequency.value = 5.5;
+                lfoGain.gain.value = 6;
+                lfo.connect(lfoGain);
+                lfoGain.connect(osc.frequency);
+                osc.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                osc.start();
+                osc2.start();
+                lfo.start();
+                activeOsc[mapping.key] = { osc, osc2, gain, lfo, lfoGain };
             } else if (instrument === "organ") {
-                // オルガン風: サイン波+倍音(固定音量)
                 osc = audioCtx.createOscillator();
                 osc.type = "sine";
                 osc.frequency.value = freq;
@@ -399,7 +575,6 @@
                 osc3.start();
                 activeOsc[mapping.key] = { osc, osc2, osc3, gain };
             } else if (instrument === "synth") {
-                // シンセ風: ノコギリ波+矩形波+エンベロープ
                 osc = audioCtx.createOscillator();
                 osc.type = "sawtooth";
                 osc.frequency.value = freq;
@@ -425,7 +600,6 @@
             if (!mapping) return;
             const o = activeOsc[mapping.key];
             if (o) {
-                // 楽器ごとに停止処理
                 if (o.gain) {
                     try {
                         o.gain.gain.cancelScheduledValues(audioCtx.currentTime);
@@ -435,6 +609,8 @@
                 if (o.osc) o.osc.stop(audioCtx.currentTime + 0.12);
                 if (o.osc2) o.osc2.stop(audioCtx.currentTime + 0.12);
                 if (o.osc3) o.osc3.stop(audioCtx.currentTime + 0.12);
+                if (o.lfo) o.lfo.stop(audioCtx.currentTime + 0.12);
+                if (o.noise) o.noise.disconnect();
                 delete activeOsc[mapping.key];
             }
             const keyDiv = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
@@ -674,6 +850,15 @@
                 [
                     { value: "sine", label: "サイン波" },
                     { value: "piano", label: "ピアノ" },
+                    { value: "violin", label: "バイオリン" },
+                    { value: "clarinet", label: "クラリネット" },
+                    { value: "flute", label: "フルート" },
+                    { value: "brass", label: "ブラス" },
+                    { value: "sax", label: "サックス" },
+                    { value: "guitar", label: "ギター" },
+                    { value: "bass", label: "ベース" },
+                    { value: "marimba", label: "マリンバ" },
+                    { value: "vibraphone", label: "ビブラフォン" },
                     { value: "organ", label: "オルガン" },
                     { value: "synth", label: "シンセ" },
                     { value: "square", label: "矩形波" },
