@@ -82,85 +82,92 @@ function playStart(keyOrCode) {
         (k.code && k.code === keyOrCode)
     );
     if (!mapping) return;
-    let freq = isNaN(mapping.note) ? noteToFreq(mapping.note) : parseFloat(mapping.note); if (!freq) return;
 
-    // --- 2回目以降の押下時の音リセット処理 ---
+    // MIDI出力
+    if (midiOutputEnabled) {
+        midiNoteOn(mapping.note, 100, 0);
+    }
+
+    let freq = isNaN(mapping.note) ? noteToFreq(mapping.note) : parseFloat(mapping.note);
+    if (!freq) return;
+
     const instrument = document.getElementById("instrument").value;
     const sustainMode = ((instrument === "piano" || instrument === "vibraphone") && sustainKeys[" "]);
-    // ギター・ベース・マリンバ・ビブラフォン・ピアノで、既に音が鳴っていたら一度止めてから再生
+
+    // すでに音が鳴っていた場合のリセット
     if (
-        (["guitar", "bass", "marimba", "vibraphone"].includes(instrument) || (instrument === "piano" && sustainMode))
+        (["guitar", "bass", "vibraphone"].includes(instrument) || (instrument === "piano" && sustainMode))
         && activeOsc[mapping.key]
     ) {
         playStop(mapping.key);
     }
-    // ピアノもスペースキー押しっぱなし時はリセット
-    if (instrument === "piano" && sustainMode && activeOsc[mapping.key]) {
-        playStop(mapping.key);
-    }
 
     freq *= Math.pow(2, currentOctaveOffset);
-    if (activeOsc[mapping.key]) return; // それ以外は多重発音防止
+    if (activeOsc[mapping.key]) return; // 多重発音防止
 
     const keyDiv = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
     if (keyDiv) keyDiv.classList.add("active");
 
-    let osc, gain, osc2, osc3, osc4, osc5;
+    let osc, osc2, osc3, osc4, osc5, gain;
+
     gain = audioCtx.createGain();
 
-    // サステイン時の減衰時間
     const sustainDecay = sustainMode ? 4.8 : 1.2; // ピアノ
-    const vibSustainDecay = sustainMode ? 2.4 : 1.2; // ビブラフォン（2倍）
+    const vibSustainDecay = sustainMode ? 2.4 : 1.2; // ビブラフォン
 
-    // 1. 押した瞬間だけ音がなり、音がそのまま響いて消えていく楽器
-    if (["guitar", "bass", "marimba"].includes(instrument)) {
-        let decay = 1.0;
-        if (instrument === "guitar") decay = 4.0; // 4倍
-        if (instrument === "bass") decay = 4.8;   // 4倍
-        if (instrument === "marimba") decay = 0.25;
-        if (instrument === "guitar") {
-            osc = audioCtx.createOscillator();
-            osc.type = "triangle";
-            osc.frequency.value = freq;
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + decay);
-            osc.start();
-            activeOsc[mapping.key] = { osc, gain, isOneShot: true };
-        } else if (instrument === "bass") {
-            osc = audioCtx.createOscillator();
-            osc.type = "square";
-            osc.frequency.value = freq;
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + decay);
-            osc.start();
-            activeOsc[mapping.key] = { osc, gain, isOneShot: true };
-        } else if (instrument === "marimba") {
-            osc = audioCtx.createOscillator();
-            osc.type = "sine";
-            osc.frequency.value = freq;
-            osc2 = audioCtx.createOscillator();
-            osc2.type = "sine";
-            osc2.frequency.value = freq * 4.0;
-            osc3 = audioCtx.createOscillator();
-            osc3.type = "sine";
-            osc3.frequency.value = freq * 10.0;
-            osc.connect(gain);
-            osc2.connect(gain);
-            osc3.connect(gain);
-            gain.connect(audioCtx.destination);
-            gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + decay);
-            osc.start();
-            osc2.start();
-            osc3.start();
-            activeOsc[mapping.key] = { osc, osc2, osc3, gain, isOneShot: true };
-        }
+    // --- ギター・ベース ---
+    if (["guitar", "bass"].includes(instrument)) {
+        let decay = instrument === "guitar" ? 4.0 : 4.8;
+        osc = audioCtx.createOscillator();
+        osc.type = instrument === "guitar" ? "triangle" : "square";
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        gain.gain.setValueAtTime(instrument === "guitar" ? 0.18 : 0.22, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + decay);
+        osc.start();
+        activeOsc[mapping.key] = { osc, gain, isOneShot: true };
     }
-    // 2. ビブラフォン: ピアノと同じくスペースキーで伸びる（2倍）
+
+    // --- マリンバ（修正版） ---
+    else if (instrument === "marimba") {
+        let decay = 0.25;
+        osc = audioCtx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        osc2 = audioCtx.createOscillator();
+        osc2.type = "sine";
+        osc2.frequency.value = freq * 4.0;
+        osc3 = audioCtx.createOscillator();
+        osc3.type = "sine";
+        osc3.frequency.value = freq * 10.0;
+
+        osc.connect(gain);
+        osc2.connect(gain);
+        osc3.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + decay);
+
+        osc.start();
+        osc2.start();
+        osc3.start();
+
+        // decay 終了後にオシレーターを停止
+        const stopTime = audioCtx.currentTime + decay;
+        osc.stop(stopTime);
+        osc2.stop(stopTime);
+        osc3.stop(stopTime);
+
+        // activeOsc に登録
+        activeOsc[mapping.key] = { osc, osc2, osc3, gain, isOneShot: true };
+
+        // decay 終了後に activeOsc から削除
+        setTimeout(() => { delete activeOsc[mapping.key]; }, decay * 1000);
+    }
+
+    // --- ビブラフォン ---
     else if (instrument === "vibraphone") {
         osc = audioCtx.createOscillator();
         osc.type = "sine";
@@ -168,28 +175,36 @@ function playStart(keyOrCode) {
         osc2 = audioCtx.createOscillator();
         osc2.type = "sine";
         osc2.frequency.value = freq * 2.0;
+
         let g1 = audioCtx.createGain();
         let g2 = audioCtx.createGain();
         g1.gain.value = 1.0;
         g2.gain.value = 0.3;
+
         let lfo = audioCtx.createOscillator();
         let lfoGain = audioCtx.createGain();
         lfo.frequency.value = 5.5;
         lfoGain.gain.value = 6;
         lfo.connect(lfoGain);
         lfoGain.connect(osc.frequency);
+
         osc.connect(g1); g1.connect(gain);
         osc2.connect(g2); g2.connect(gain);
         gain.connect(audioCtx.destination);
+
         gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
         gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + vibSustainDecay);
+
         osc.start();
         osc2.start();
         lfo.start();
+
         activeOsc[mapping.key] = { osc, osc2, gain, g1, g2, lfo, lfoGain, sustain: sustainMode, isVibraphone: true };
     }
-    // 3. 押している間、持続的に音がなり、離した瞬間音が鳴り止む楽器
+
+    // --- 弦楽器・管楽器・オルガン・シンセ ---
     else if (["violin", "clarinet", "flute", "brass", "sax", "organ", "synth"].includes(instrument)) {
+        // --- バイオリン ---
         if (instrument === "violin") {
             osc = audioCtx.createOscillator();
             osc.type = "sawtooth";
@@ -206,7 +221,9 @@ function playStart(keyOrCode) {
             osc.start();
             lfo.start();
             activeOsc[mapping.key] = { osc, gain, lfo, lfoGain };
-        } else if (instrument === "clarinet") {
+        }
+        // --- クラリネット ---
+        else if (instrument === "clarinet") {
             osc = audioCtx.createOscillator();
             osc.type = "square";
             osc.frequency.value = freq;
@@ -225,7 +242,9 @@ function playStart(keyOrCode) {
             osc2.start();
             osc3.start();
             activeOsc[mapping.key] = { osc, osc2, osc3, gain };
-        } else if (instrument === "flute") {
+        }
+        // --- フルート ---
+        else if (instrument === "flute") {
             osc = audioCtx.createOscillator();
             osc.type = "sine";
             osc.frequency.value = freq;
@@ -243,7 +262,9 @@ function playStart(keyOrCode) {
             gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
             osc.start();
             activeOsc[mapping.key] = { osc, gain, noise };
-        } else if (instrument === "brass") {
+        }
+        // --- ブラス ---
+        else if (instrument === "brass") {
             osc = audioCtx.createOscillator();
             osc.type = "sawtooth";
             osc.frequency.value = freq;
@@ -257,7 +278,9 @@ function playStart(keyOrCode) {
             osc.start();
             osc2.start();
             activeOsc[mapping.key] = { osc, osc2, gain };
-        } else if (instrument === "sax") {
+        }
+        // --- サックス ---
+        else if (instrument === "sax") {
             osc = audioCtx.createOscillator();
             osc.type = "triangle";
             osc.frequency.value = freq;
@@ -278,7 +301,9 @@ function playStart(keyOrCode) {
             osc2.start();
             lfo.start();
             activeOsc[mapping.key] = { osc, osc2, gain, lfo, lfoGain };
-        } else if (instrument === "organ") {
+        }
+        // --- オルガン ---
+        else if (instrument === "organ") {
             osc = audioCtx.createOscillator();
             osc.type = "sine";
             osc.frequency.value = freq;
@@ -297,7 +322,9 @@ function playStart(keyOrCode) {
             osc2.start();
             osc3.start();
             activeOsc[mapping.key] = { osc, osc2, osc3, gain };
-        } else if (instrument === "synth") {
+        }
+        // --- シンセ ---
+        else if (instrument === "synth") {
             osc = audioCtx.createOscillator();
             osc.type = "sawtooth";
             osc.frequency.value = freq;
@@ -313,7 +340,8 @@ function playStart(keyOrCode) {
             activeOsc[mapping.key] = { osc, osc2, gain };
         }
     }
-    // 4. ピアノ: 押している間はだんだん音が消え、離した瞬間に音が消える
+
+    // --- ピアノ ---
     else if (instrument === "piano") {
         osc = audioCtx.createOscillator();
         osc.type = "sine";
@@ -324,24 +352,30 @@ function playStart(keyOrCode) {
         osc3 = audioCtx.createOscillator();
         osc3.type = "sine";
         osc3.frequency.value = freq * 3;
+
         let g1 = audioCtx.createGain();
         let g2 = audioCtx.createGain();
         let g3 = audioCtx.createGain();
         g1.gain.value = 1.0;
         g2.gain.value = 0.4;
         g3.gain.value = 0.2;
+
         osc.connect(g1); g1.connect(gain);
         osc2.connect(g2); g2.connect(gain);
         osc3.connect(g3); g3.connect(gain);
         gain.connect(audioCtx.destination);
+
         gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
         gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + sustainDecay);
+
         osc.start();
         osc2.start();
         osc3.start();
+
         activeOsc[mapping.key] = { osc, osc2, osc3, gain, g1, g2, g3, sustain: sustainMode, isPiano: true };
     }
-    // サイン波・矩形波・三角波・ノコギリ波
+
+    // --- 単純波形 ---
     else if (["sine", "square", "triangle", "sawtooth"].includes(instrument)) {
         osc = audioCtx.createOscillator();
         osc.type = instrument;
@@ -360,6 +394,12 @@ function playStop(keyOrCode) {
         (k.code && k.code === keyOrCode)
     );
     if (!mapping) return;
+
+    // MIDI出力
+    if (midiOutputEnabled) {
+        midiNoteOff(mapping.note, 0);
+    }
+
     const o = activeOsc[mapping.key];
     if (o) {
         // サステイン対応（ピアノ・ビブラフォンのみ）
@@ -954,3 +994,56 @@ window.addEventListener("click", e => {
         document.getElementById("instrumentParamModal").style.display = "none";
     }
 });
+
+// --- MIDI出力機能 ---
+let midiAccess = null;
+let midiOutput = null;
+let midiOutputEnabled = false;
+
+// MIDIノート番号変換
+function noteToMidiNumber(note) {
+    const notes = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
+    const match = note.match(/^([A-G]#?)(\d)$/);
+    if (!match) return null;
+    const [_, n, octave] = match;
+    let midi = 12 * (parseInt(octave) + 1) + notes[n] + transpose;
+    midi += currentOctaveOffset * 12;
+    return midi;
+}
+
+// MIDI初期化
+function initMIDI() {
+    if (!navigator.requestMIDIAccess) return;
+    navigator.requestMIDIAccess().then(access => {
+        midiAccess = access;
+        // 最初の出力ポートを選択
+        const outputs = Array.from(midiAccess.outputs.values());
+        if (outputs.length > 0) midiOutput = outputs[0];
+    });
+}
+initMIDI();
+
+// MIDIノートON
+function midiNoteOn(note, velocity = 100, channel = 0) {
+    if (!midiOutputEnabled || !midiOutput) return;
+    const midiNum = noteToMidiNumber(note);
+    if (midiNum == null) return;
+    midiOutput.send([0x90 + channel, midiNum, velocity]);
+}
+
+// MIDIノートOFF
+function midiNoteOff(note, channel = 0) {
+    if (!midiOutputEnabled || !midiOutput) return;
+    const midiNum = noteToMidiNumber(note);
+    if (midiNum == null) return;
+    midiOutput.send([0x80 + channel, midiNum, 0]);
+}
+
+// MIDI出力ON/OFF UIイベント
+const midiEnableElem = document.getElementById("midiOutputEnable");
+if (midiEnableElem) {
+    midiEnableElem.addEventListener("change", e => {
+        midiOutputEnabled = e.target.checked;
+    });
+    midiOutputEnabled = midiEnableElem.checked;
+}
