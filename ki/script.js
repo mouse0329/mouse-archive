@@ -84,36 +84,48 @@ function noteToFreq(note) {
 }
 
 // 再生開始
-function playStart(keyOrCode) {
-    const mapping = keyMapJP.find(k =>
-        k.key.toLowerCase() === keyOrCode.toLowerCase() ||
+function playStart(keyOrCode, instrumentOverride) {
+    // keyOrCodeがkeyMapJPに存在しない場合は、直接noteとして扱う
+    let mapping = keyMapJP.find(k =>
+        k.key.toLowerCase() === String(keyOrCode).toLowerCase() ||
         (k.code && k.code === keyOrCode)
     );
-    if (!mapping) return;
+    let note, key;
+    if (mapping) {
+        note = mapping.note;
+        key = mapping.key;
+    } else {
+        // keyOrCodeが音名の場合（例: "C4"）
+        note = keyOrCode;
+        key = keyOrCode;
+    }
+
+    // スケール・コード制限
+    if (!isNoteInScale(note) || !isNoteInChord(note)) return;
 
     // MIDI出力
     if (midiOutputEnabled) {
-        midiNoteOn(mapping.note, 100, 0);
+        midiNoteOn(note, 100, 0);
     }
 
-    let freq = isNaN(mapping.note) ? noteToFreq(mapping.note) : parseFloat(mapping.note);
+    let freq = isNaN(note) ? noteToFreq(note) : parseFloat(note);
     if (!freq) return;
 
-    const instrument = document.getElementById("instrument").value;
+    const instrument = instrumentOverride || document.getElementById("instrument").value;
     const sustainMode = ((instrument === "piano" || instrument === "vibraphone") && sustainKeys[" "]);
 
     // すでに音が鳴っていた場合のリセット
     if (
         (["guitar", "bass", "vibraphone"].includes(instrument) || (instrument === "piano" && sustainMode))
-        && activeOsc[mapping.key]
+        && activeOsc[key]
     ) {
-        playStop(mapping.key);
+        playStop(key);
     }
 
     freq *= Math.pow(2, currentOctaveOffset);
-    if (activeOsc[mapping.key]) return; // 多重発音防止
+    if (activeOsc[key]) return; // 多重発音防止
 
-    const keyDiv = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
+    const keyDiv = document.querySelector(".key[data-key='" + CSS.escape(key) + "']");
     if (keyDiv) keyDiv.classList.add("active");
 
     let osc, osc2, osc3, osc4, osc5, gain;
@@ -134,11 +146,11 @@ function playStart(keyOrCode) {
         gain.gain.setValueAtTime(instrument === "guitar" ? 0.18 : 0.22, audioCtx.currentTime);
         gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + decay);
         osc.start();
-        activeOsc[mapping.key] = { osc, gain, isOneShot: true };
+        activeOsc[key] = { osc, gain, isOneShot: true };
         // 音が消えるタイミングで鍵盤のactiveクラスも外す
         setTimeout(() => {
-            delete activeOsc[mapping.key];
-            const keyDiv2 = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
+            delete activeOsc[key];
+            const keyDiv2 = document.querySelector(".key[data-key='" + CSS.escape(key) + "']");
             if (keyDiv2) keyDiv2.classList.remove("active");
         }, decay * 1000);
     }
@@ -175,12 +187,12 @@ function playStart(keyOrCode) {
         osc3.stop(stopTime);
 
         // activeOsc に登録
-        activeOsc[mapping.key] = { osc, osc2, osc3, gain, isOneShot: true };
+        activeOsc[key] = { osc, osc2, osc3, gain, isOneShot: true };
 
         // decay 終了後に activeOsc から削除＆鍵盤のactiveクラスも外す
         setTimeout(() => {
-            delete activeOsc[mapping.key];
-            const keyDiv2 = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
+            delete activeOsc[key];
+            const keyDiv2 = document.querySelector(".key[data-key='" + CSS.escape(key) + "']");
             if (keyDiv2) keyDiv2.classList.remove("active");
         }, decay * 1000);
     }
@@ -217,7 +229,7 @@ function playStart(keyOrCode) {
         osc2.start();
         lfo.start();
 
-        activeOsc[mapping.key] = { osc, osc2, gain, g1, g2, lfo, lfoGain, sustain: sustainMode, isVibraphone: true };
+        activeOsc[key] = { osc, osc2, gain, g1, g2, lfo, lfoGain, sustain: sustainMode, isVibraphone: true };
     }
 
     // --- 弦楽器・管楽器・オルガン・シンセ ---
@@ -238,7 +250,7 @@ function playStart(keyOrCode) {
             gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
             osc.start();
             lfo.start();
-            activeOsc[mapping.key] = { osc, gain, lfo, lfoGain };
+            activeOsc[key] = { osc, gain, lfo, lfoGain };
         }
         // --- クラリネット ---
         else if (instrument === "clarinet") {
@@ -259,7 +271,7 @@ function playStart(keyOrCode) {
             osc.start();
             osc2.start();
             osc3.start();
-            activeOsc[mapping.key] = { osc, osc2, osc3, gain };
+            activeOsc[key] = { osc, osc2, osc3, gain };
         }
         // --- フルート ---
         else if (instrument === "flute") {
@@ -279,7 +291,7 @@ function playStart(keyOrCode) {
             gain.connect(audioCtx.destination);
             gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
             osc.start();
-            activeOsc[mapping.key] = { osc, gain, noise };
+            activeOsc[key] = { osc, gain, noise };
         }
         // --- ブラス ---
         else if (instrument === "brass") {
@@ -295,7 +307,7 @@ function playStart(keyOrCode) {
             gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
             osc.start();
             osc2.start();
-            activeOsc[mapping.key] = { osc, osc2, gain };
+            activeOsc[key] = { osc, osc2, gain };
         }
         // --- サックス ---
         else if (instrument === "sax") {
@@ -318,7 +330,7 @@ function playStart(keyOrCode) {
             osc.start();
             osc2.start();
             lfo.start();
-            activeOsc[mapping.key] = { osc, osc2, gain, lfo, lfoGain };
+            activeOsc[key] = { osc, osc2, gain, lfo, lfoGain };
         }
         // --- オルガン ---
         else if (instrument === "organ") {
@@ -339,7 +351,7 @@ function playStart(keyOrCode) {
             osc.start();
             osc2.start();
             osc3.start();
-            activeOsc[mapping.key] = { osc, osc2, osc3, gain };
+            activeOsc[key] = { osc, osc2, osc3, gain };
         }
         // --- シンセ ---
         else if (instrument === "synth") {
@@ -355,7 +367,7 @@ function playStart(keyOrCode) {
             gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
             osc.start();
             osc2.start();
-            activeOsc[mapping.key] = { osc, osc2, gain };
+            activeOsc[key] = { osc, osc2, gain };
         }
     }
 
@@ -390,7 +402,7 @@ function playStart(keyOrCode) {
         osc2.start();
         osc3.start();
 
-        activeOsc[mapping.key] = { osc, osc2, osc3, gain, g1, g2, g3, sustain: sustainMode, isPiano: true };
+        activeOsc[key] = { osc, osc2, osc3, gain, g1, g2, g3, sustain: sustainMode, isPiano: true };
     }
 
     // --- 単純波形 ---
@@ -402,23 +414,30 @@ function playStart(keyOrCode) {
         gain.connect(audioCtx.destination);
         gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
         osc.start();
-        activeOsc[mapping.key] = { osc, gain };
+        activeOsc[key] = { osc, gain };
     }
 }
 
 function playStop(keyOrCode) {
-    const mapping = keyMapJP.find(k =>
-        k.key.toLowerCase() === keyOrCode.toLowerCase() ||
+    let mapping = keyMapJP.find(k =>
+        k.key.toLowerCase() === String(keyOrCode).toLowerCase() ||
         (k.code && k.code === keyOrCode)
     );
-    if (!mapping) return;
+    let note, key;
+    if (mapping) {
+        note = mapping.note;
+        key = mapping.key;
+    } else {
+        note = keyOrCode;
+        key = keyOrCode;
+    }
 
     // MIDI出力
     if (midiOutputEnabled) {
-        midiNoteOff(mapping.note, 0);
+        midiNoteOff(note, 0);
     }
 
-    const o = activeOsc[mapping.key];
+    const o = activeOsc[key];
     if (o) {
         // サステイン対応（ピアノ・ビブラフォンのみ）
         if ((o.isPiano || o.isVibraphone) && sustainKeys[" "]) {
@@ -445,10 +464,10 @@ function playStop(keyOrCode) {
         if (o.osc3) o.osc3.stop(audioCtx.currentTime + 0.12);
         if (o.lfo) o.lfo.stop(audioCtx.currentTime + 0.12);
         if (o.noise) o.noise.disconnect();
-        delete activeOsc[mapping.key];
+        delete activeOsc[key];
     }
     // playStopで必ず鍵盤のactiveクラスを外す
-    const keyDiv = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
+    const keyDiv = document.querySelector(".key[data-key='" + CSS.escape(key) + "']");
     if (keyDiv) keyDiv.classList.remove("active");
 }
 
@@ -559,6 +578,7 @@ const modal = document.getElementById("modal");
 document.getElementById("openModal").addEventListener("click", () => { modal.style.display = "flex"; });
 document.querySelector(".modal-close").addEventListener("click", () => { modal.style.display = "none"; });
 window.addEventListener("click", e => { if (e.target === modal) modal.style.display = "none"; });
+
 
 // タッチ・キー操作
 document.addEventListener("keydown", e => {
@@ -1236,3 +1256,669 @@ systemBtnsToggle.addEventListener("click", () => {
     systemBtnsWrapper.style.display = systemBtnsOpen ? "inline-block" : "none";
     systemBtnsToggle.textContent = systemBtnsOpen ? "▲ システム機能" : "▼ システム機能";
 });
+
+// --- 録音・再生・ループ・オーバーダビング機能 ---
+let recording = false;
+let recordStartTime = 0;
+let recordedEvents = [];
+let playbackTimeouts = [];
+let isPlaying = false;
+let isLooping = false;
+let overdubMode = false;
+
+// UIボタン追加（HTML側にボタンを追加している前提。なければdocument.createElementで追加可）
+const recBtn = document.getElementById("recordBtn");
+const playBtn = document.getElementById("playBtn");
+const loopBtn = document.getElementById("loopBtn");
+const overdubBtn = document.getElementById("overdubBtn");
+const stopBtn = document.getElementById("stopBtn");
+
+// 録音開始
+function startRecording() {
+    recording = true;
+    recordStartTime = performance.now();
+    if (!overdubMode) recordedEvents = [];
+    recBtn.textContent = "録音中...";
+    playBtn.disabled = true;
+    loopBtn.disabled = true;
+    overdubBtn.disabled = true;
+    stopBtn.disabled = false;
+}
+
+// 録音停止
+function stopRecording() {
+    recording = false;
+    overdubBtn.disabled = false;
+    stopBtn.disabled = true;
+}
+
+// 再生
+function playRecording(loop = false) {
+    if (recordedEvents.length === 0) return;
+    isPlaying = true;
+    isLooping = loop;
+    playBtn.disabled = true;
+    recBtn.disabled = true;
+    loopBtn.disabled = true;
+    overdubBtn.disabled = true;
+    stopBtn.disabled = false;
+    const startTime = performance.now();
+    playbackTimeouts = [];
+    recordedEvents.forEach(ev => {
+        const t = ev.time;
+        const timeoutId = setTimeout(() => {
+            if (ev.type === "on") playStart(ev.key);
+            else playStop(ev.key);
+        }, t);
+        playbackTimeouts.push(timeoutId);
+    });
+    // ループ再生
+    if (loop) {
+        const totalTime = recordedEvents.length > 0 ? recordedEvents[recordedEvents.length - 1].time : 0;
+        const loopTimeout = setTimeout(() => {
+            stopPlayback();
+            playRecording(true);
+        }, totalTime + 100);
+        playbackTimeouts.push(loopTimeout);
+    } else {
+        // 再生終了後にボタン状態復帰
+        const totalTime = recordedEvents.length > 0 ? recordedEvents[recordedEvents.length - 1].time : 0;
+        const endTimeout = setTimeout(() => {
+            stopPlayback();
+        }, totalTime + 100);
+        playbackTimeouts.push(endTimeout);
+    }
+}
+
+// 停止
+function stopPlayback() {
+    playbackTimeouts.forEach(id => clearTimeout(id));
+    playbackTimeouts = [];
+    isPlaying = false;
+    isLooping = false;
+    playBtn.disabled = false;
+    recBtn.disabled = false;
+    loopBtn.disabled = false;
+    overdubBtn.disabled = false;
+    stopBtn.disabled = true;
+}
+
+// オーバーダビング
+function startOverdub() {
+    overdubMode = true;
+    startRecording();
+}
+
+// イベント記録
+function recordEvent(type, key) {
+    if (!recording) return;
+    const time = performance.now() - recordStartTime;
+    recordedEvents.push({ type, key, time });
+}
+
+// --- playStart/playStopを楽器指定可能に拡張
+// 録音イベントは楽器指定不要なのでそのまま
+const origPlayStart = playStart;
+playStart = function (keyOrCode, instrumentOverride) {
+    recordEvent("on", keyOrCode);
+    origPlayStart(keyOrCode, instrumentOverride);
+};
+const origPlayStop = playStop;
+playStop = function (keyOrCode) {
+    recordEvent("off", keyOrCode);
+    origPlayStop(keyOrCode);
+};
+
+// --- ステップシーケンサー機能 ---
+let sequencerSteps = 16;
+let sequencerChannels = 4;
+let sequencerData = []; // [channel][step] = {note, enabled}
+let sequencerPlaying = false;
+let sequencerStepIdx = 0;
+let sequencerIntervalId = null;
+let sequencerTempo = 120; // シーケンサー用テンポ（初期値）
+
+// 音階候補（必要に応じて拡張可）
+const sequencerNotes = [
+    "C3", "D3", "E3", "F3", "G3", "A3", "B3",
+    "C4", "D4", "E4", "F4", "G4", "A4", "B4",
+    "C5", "D5", "E5", "F5", "G5", "A5", "B5"
+];
+
+// 楽器候補
+const sequencerInstruments = [
+    "piano", "violin", "clarinet", "flute", "brass", "sax", "guitar", "bass", "marimba", "vibraphone", "organ", "synth"
+];
+
+// 初期化
+function initSequencerData() {
+    sequencerData = [];
+    for (let ch = 0; ch < sequencerChannels; ch++) {
+        const channel = [];
+        for (let st = 0; st < sequencerSteps; st++) {
+            channel.push({ note: sequencerNotes[ch % sequencerNotes.length], enabled: false, instrument: sequencerInstruments[ch % sequencerInstruments.length] });
+        }
+        sequencerData.push(channel);
+    }
+}
+
+// データリサイズ
+function resizeSequencerData(newChannels, newSteps) {
+    const newData = [];
+    for (let ch = 0; ch < newChannels; ch++) {
+        const channel = [];
+        for (let st = 0; st < newSteps; st++) {
+            // 既存データがあればコピー、なければ初期値
+            if (sequencerData[ch] && sequencerData[ch][st]) {
+                channel.push({ ...sequencerData[ch][st] });
+            } else {
+                channel.push({
+                    note: sequencerNotes[ch % sequencerNotes.length],
+                    enabled: false,
+                    instrument: sequencerInstruments[ch % sequencerInstruments.length]
+                });
+            }
+        }
+        newData.push(channel);
+    }
+    sequencerData = newData;
+}
+
+// UI描画
+function renderSequencerGrid() {
+    const grid = document.getElementById("sequencerGrid");
+    grid.innerHTML = "";
+    const table = document.createElement("table");
+    table.className = "sequencer-table";
+    table.style.borderCollapse = "collapse";
+    // ヘッダー
+    const thead = document.createElement("thead");
+    const trh = document.createElement("tr");
+    trh.appendChild(document.createElement("th")); // チャンネル名
+    for (let st = 0; st < sequencerSteps; st++) {
+        const th = document.createElement("th");
+        th.textContent = st + 1;
+        th.style.width = "32px";
+        trh.appendChild(th);
+    }
+    thead.appendChild(trh);
+    table.appendChild(thead);
+    // 本体
+    const tbody = document.createElement("tbody");
+    for (let ch = 0; ch < sequencerChannels; ch++) {
+        const tr = document.createElement("tr");
+        // チャンネル名・楽器・音階選択
+        const tdCh = document.createElement("td");
+        tdCh.style.minWidth = "120px";
+        // 楽器選択
+        const instSel = document.createElement("select");
+        sequencerInstruments.forEach(inst => {
+            const opt = document.createElement("option");
+            opt.value = inst;
+            opt.textContent = inst;
+            if (sequencerData[ch][0].instrument === inst) opt.selected = true;
+            instSel.appendChild(opt);
+        });
+        instSel.addEventListener("change", () => {
+            for (let st = 0; st < sequencerSteps; st++) {
+                sequencerData[ch][st].instrument = instSel.value;
+            }
+        });
+        tdCh.appendChild(instSel);
+        // 音階選択
+        const noteSel = document.createElement("select");
+        sequencerNotes.forEach(note => {
+            const opt = document.createElement("option");
+            opt.value = note;
+            opt.textContent = note;
+            if (sequencerData[ch][0].note === note) opt.selected = true;
+            noteSel.appendChild(opt);
+        });
+        noteSel.addEventListener("change", () => {
+            for (let st = 0; st < sequencerSteps; st++) {
+                sequencerData[ch][st].note = noteSel.value;
+            }
+        });
+        tdCh.appendChild(noteSel);
+        tr.appendChild(tdCh);
+        // ステップ
+        for (let st = 0; st < sequencerSteps; st++) {
+            const td = document.createElement("td");
+            td.style.textAlign = "center";
+            td.style.border = "1px solid #ccc";
+            td.style.background = sequencerData[ch][st].enabled ? "#4caf50" : "#fff";
+            td.style.cursor = "pointer";
+            td.onclick = () => {
+                sequencerData[ch][st].enabled = !sequencerData[ch][st].enabled;
+                renderSequencerGrid();
+            };
+            tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    grid.appendChild(table);
+}
+
+// 再生
+function playSequencer() {
+    if (sequencerPlaying) return;
+    sequencerPlaying = true;
+    sequencerStepIdx = 0;
+    document.getElementById("sequencerPlayBtn").disabled = true;
+    document.getElementById("sequencerStopBtn").disabled = false;
+    const interval = 60000 / sequencerTempo; // ここを変更
+    sequencerIntervalId = setInterval(() => {
+        // 各チャンネルのこのステップを鳴らす
+        for (let ch = 0; ch < sequencerChannels; ch++) {
+            const step = sequencerData[ch][sequencerStepIdx];
+            if (step.enabled) {
+                // 楽器名を直接渡して鳴らす
+                playStart(step.note, step.instrument);
+                setTimeout(() => {
+                    playStop(step.note);
+                }, interval * 0.7); // 少し短めに止める
+            }
+        }
+        // ステップインジケータ（セル背景色変更）
+        highlightSequencerStep(sequencerStepIdx);
+        sequencerStepIdx = (sequencerStepIdx + 1) % sequencerSteps;
+    }, interval);
+}
+
+// 停止
+function stopSequencer() {
+    if (sequencerIntervalId) clearInterval(sequencerIntervalId);
+    sequencerIntervalId = null;
+    sequencerPlaying = false;
+    document.getElementById("sequencerPlayBtn").disabled = false;
+    document.getElementById("sequencerStopBtn").disabled = true;
+    highlightSequencerStep(-1);
+}
+
+// ステップインジケータ
+function highlightSequencerStep(idx) {
+    const grid = document.getElementById("sequencerGrid");
+    const table = grid.querySelector("table");
+    if (!table) return;
+    for (let ch = 0; ch < sequencerChannels; ch++) {
+        for (let st = 0; st < sequencerSteps; st++) {
+            const td = table.rows[ch + 1]?.cells[st + 1];
+            if (td) {
+                if (st === idx) {
+                    td.style.background = sequencerData[ch][st].enabled ? "#ff9800" : "#ffe0b2";
+                } else {
+                    td.style.background = sequencerData[ch][st].enabled ? "#4caf50" : "#fff";
+                }
+            }
+        }
+    }
+}
+
+// UIイベント
+document.addEventListener("DOMContentLoaded", () => {
+    // 初期化
+    initSequencerData();
+    renderSequencerGrid();
+    // 再生
+    const playBtn = document.getElementById("sequencerPlayBtn");
+    const stopBtn = document.getElementById("sequencerStopBtn");
+    if (playBtn) playBtn.onclick = playSequencer;
+    if (stopBtn) stopBtn.onclick = stopSequencer;
+    // ステップ数変更
+    const stepsInput = document.getElementById("sequencerStepsInput");
+    if (stepsInput) stepsInput.onchange = () => {
+        let v = parseInt(stepsInput.value, 10);
+        if (isNaN(v) || v < 4) v = 4;
+        if (v > 64) v = 64;
+        // 既存データを保持しつつリサイズ
+        resizeSequencerData(sequencerChannels, v);
+        sequencerSteps = v;
+        renderSequencerGrid();
+    };
+    const channelsInput = document.getElementById("sequencerChannelsInput");
+    if (channelsInput) channelsInput.onchange = () => {
+        let v = parseInt(channelsInput.value, 10);
+        if (isNaN(v) || v < 1) v = 1;
+        if (v > 8) v = 8;
+        // 既存データを保持しつつリサイズ
+        resizeSequencerData(v, sequencerSteps);
+        sequencerChannels = v;
+        renderSequencerGrid();
+    };
+    // シーケンサー用テンポ入力欄イベント
+    const sequencerTempoInput = document.getElementById("sequencerTempoInput");
+    if (sequencerTempoInput) {
+        sequencerTempoInput.addEventListener("input", (e) => {
+            let v = parseInt(e.target.value, 10);
+            if (isNaN(v)) v = 120;
+            if (v < 30) v = 30;
+            if (v > 300) v = 300;
+            sequencerTempo = v;
+            sequencerTempoInput.value = v;
+            if (sequencerPlaying) {
+                stopSequencer();
+                playSequencer();
+            }
+        });
+        // 初期値セット
+        sequencerTempoInput.value = sequencerTempo;
+    }
+});
+
+// メトロノームテンポ変更時にシーケンサー再生中なら即反映
+document.getElementById("metronomeTempo").addEventListener("input", () => {
+    if (sequencerPlaying) {
+        stopSequencer();
+        playSequencer();
+    }
+});
+
+// --- プリセット管理機能 ---
+const PRESET_KEY = "ki_presets";
+function getPresets() {
+    try {
+        return JSON.parse(localStorage.getItem(PRESET_KEY)) || {};
+    } catch (e) { return {}; }
+}
+function savePresets(obj) {
+    localStorage.setItem(PRESET_KEY, JSON.stringify(obj));
+}
+function updatePresetSelect() {
+    const select = document.getElementById("presetSelect");
+    if (!select) return;
+    const presets = getPresets();
+    select.innerHTML = "";
+    Object.keys(presets).forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+    });
+}
+function showPresetStatus(msg) {
+    const status = document.getElementById("presetStatus");
+    if (status) status.textContent = msg;
+}
+
+// 保存
+document.getElementById("presetSaveBtn").onclick = () => {
+    const name = prompt("プリセット名を入力してください:");
+    if (!name) return;
+    const presets = getPresets();
+    presets[name] = {
+        keyMapJP,
+        instrumentParams,
+        sequencerData,
+        sequencerSteps,
+        sequencerChannels,
+        sequencerTempo
+    };
+    savePresets(presets); // ← ローカルストレージへ保存
+    updatePresetSelect();
+    showPresetStatus("保存しました");
+};
+
+// 読み込み
+document.getElementById("presetLoadBtn").onclick = () => {
+    const select = document.getElementById("presetSelect");
+    const name = select.value;
+    if (!name) return;
+    const presets = getPresets(); // ← ローカルストレージから取得
+    if (!presets[name]) return;
+    keyMapJP = JSON.parse(JSON.stringify(presets[name].keyMapJP));
+    Object.assign(instrumentParams, JSON.parse(JSON.stringify(presets[name].instrumentParams)));
+    // ステップシーケンサー関連も復元
+    sequencerData = JSON.parse(JSON.stringify(presets[name].sequencerData || []));
+    sequencerSteps = presets[name].sequencerSteps || 16;
+    sequencerChannels = presets[name].sequencerChannels || 4;
+    sequencerTempo = presets[name].sequencerTempo || 120;
+    renderMappingTable();
+    renderKeyboard();
+    saveInstrumentParams();
+    autoSaveMap();
+    renderSequencerGrid();
+    // UI値も復元
+    document.getElementById("sequencerStepsInput").value = sequencerSteps;
+    document.getElementById("sequencerChannelsInput").value = sequencerChannels;
+    document.getElementById("sequencerTempoInput").value = sequencerTempo;
+    showPresetStatus("読み込みました");
+};
+
+// 削除
+document.getElementById("presetDeleteBtn").onclick = () => {
+    const select = document.getElementById("presetSelect");
+    const name = select.value;
+    if (!name) return;
+    if (!confirm(`プリセット「${name}」を削除しますか？`)) return;
+    const presets = getPresets();
+    delete presets[name];
+    savePresets(presets);
+    updatePresetSelect();
+    showPresetStatus("削除しました");
+};
+
+// エクスポート
+document.getElementById("presetExportBtn").onclick = () => {
+    const select = document.getElementById("presetSelect");
+    const name = select.value;
+    if (!name) return;
+    const presets = getPresets();
+    if (!presets[name]) return;
+    const dataStr = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(presets[name], null, 2));
+    const a = document.createElement("a");
+    a.href = dataStr;
+    a.download = `preset_${name}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showPresetStatus("エクスポートしました");
+};
+
+// インポート
+document.getElementById("presetImportBtn").onclick = () => {
+    document.getElementById("presetImportInput").click();
+};
+document.getElementById("presetImportInput").onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (ev) {
+        try {
+            const obj = JSON.parse(ev.target.result);
+            const name = prompt("プリセット名を入力してください:", file.name.replace(/\.json$/, ""));
+            if (!name) return;
+            const presets = getPresets();
+            presets[name] = obj;
+            savePresets(presets);
+            updatePresetSelect();
+            showPresetStatus("インポートしました");
+        } catch (err) {
+            showPresetStatus("インポート失敗");
+        }
+    };
+    reader.readAsText(file);
+};
+
+// --- WAVエクスポート機能 ---
+document.getElementById("exportWavBtn").onclick = () => {
+    if (recordedEvents.length === 0) {
+        showPresetStatus("録音データがありません");
+        return;
+    }
+    // OfflineAudioContextで再合成
+    const duration = recordedEvents.length > 0 ? recordedEvents[recordedEvents.length - 1].time / 1000 + 2 : 2;
+    const sampleRate = 44100;
+    const offlineCtx = new OfflineAudioContext(1, duration * sampleRate, sampleRate);
+
+    // 再生イベントをOfflineAudioContextで再現
+    let activeOsc = {};
+    recordedEvents.forEach(ev => {
+        const t = ev.time / 1000;
+        if (ev.type === "on") {
+            const freq = noteToFreq(ev.key);
+            if (!freq) return;
+            const osc = offlineCtx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            const gain = offlineCtx.createGain();
+            gain.gain.setValueAtTime(0.2, t);
+            gain.gain.linearRampToValueAtTime(0.001, t + 1.0);
+            osc.connect(gain);
+            gain.connect(offlineCtx.destination);
+            osc.start(t);
+            osc.stop(t + 1.0);
+            activeOsc[ev.key] = osc;
+        } else if (ev.type === "off") {
+            // 早めに減衰
+            // 実装簡易化のため、osc.stopはonで1秒後に止める
+        }
+    });
+
+    offlineCtx.startRendering().then(buffer => {
+        // WAVバイナリ生成
+        function encodeWAV(audioBuffer) {
+            const nSamples = audioBuffer.length;
+            const buffer = new ArrayBuffer(44 + nSamples * 2);
+            const view = new DataView(buffer);
+
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + nSamples * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, nSamples * 2, true);
+
+            // PCMデータ
+            const channelData = audioBuffer.getChannelData(0);
+            let offset = 44;
+            for (let i = 0; i < nSamples; i++) {
+                let s = Math.max(-1, Math.min(1, channelData[i]));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+                offset += 2;
+            }
+            return buffer;
+        }
+
+        const wavBuffer = encodeWAV(buffer);
+        const blob = new Blob([wavBuffer], { type: "audio/wav" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "recording.wav";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showPresetStatus("WAVエクスポートしました");
+    });
+};
+
+// --- MIDIエクスポート機能 ---
+document.getElementById("exportMidiBtn").onclick = () => {
+    if (recordedEvents.length === 0) {
+        showPresetStatus("録音データがありません");
+        return;
+    }
+    // 簡易MIDIファイル生成
+    function midiNoteNumber(note) {
+        const notes = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
+        const match = note.match(/^([A-G]#?)(\d)$/);
+        if (!match) return 60;
+        const [_, n, octave] = match;
+        return 12 * (parseInt(octave) + 1) + notes[n];
+    }
+
+    // SMF format 0
+    let events = [];
+    let lastTime = 0;
+    recordedEvents.forEach(ev => {
+        const t = Math.round(ev.time / 1000 * 480); // 480 ticks/sec
+        const delta = t - lastTime;
+        lastTime = t;
+        // delta time (variable length)
+        function encodeVarLen(value) {
+            let buffer = [];
+            let val = value & 0x7F;
+            while ((value >>= 7)) {
+                val <<= 8;
+                val |= ((value & 0x7F) | 0x80);
+            }
+            while (true) {
+                buffer.push(val & 0xFF);
+                if (val & 0x80) val >>= 8;
+                else break;
+            }
+            return buffer.reverse();
+        }
+        events.push(...encodeVarLen(delta));
+        if (ev.type === "on") {
+            events.push(0x90, midiNoteNumber(ev.key), 100);
+        } else {
+            events.push(0x80, midiNoteNumber(ev.key), 0);
+        }
+    });
+
+    // ヘッダー
+    function hex(...args) { return new Uint8Array(args); }
+    let header = [
+        ...hex(0x4d, 0x54, 0x68, 0x64), // MThd
+        ...hex(0x00, 0x00, 0x00, 0x06), // header length
+        ...hex(0x00, 0x00),           // format 0
+        ...hex(0x00, 0x01),           // 1 track
+        ...hex(0x01, 0xe0),           // division (480)
+        // Track chunk
+        0x4d, 0x54, 0x72, 0x6b,         // MTrk
+    ];
+    // track length placeholder
+    let trackLenIdx = header.length;
+    header.push(0, 0, 0, 0);
+
+    // track data
+    let track = [];
+    track.push(0x00, 0xFF, 0x51, 0x03, 0x07, 0xA1, 0x20); // tempo 500000 (120bpm)
+    track.push(...events);
+    track.push(0x00, 0xFF, 0x2F, 0x00); // end of track
+
+    // track length
+    let trackLen = track.length;
+    header[trackLenIdx] = (trackLen >> 24) & 0xFF;
+    header[trackLenIdx + 1] = (trackLen >> 16) & 0xFF;
+    header[trackLenIdx + 2] = (trackLen >> 8) & 0xFF;
+    header[trackLenIdx + 3] = trackLen & 0xFF;
+
+    let midiData = new Uint8Array([...header, ...track]);
+    const blob = new Blob([midiData], { type: "audio/midi" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "recording.mid";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showPresetStatus("MIDIエクスポートしました");
+};
+
+// --- スケール・コード判定関数（仮実装） ---
+function isNoteInScale(note) {
+    // 本来はscaleMode/scaleRootに応じて判定
+    return true;
+}
+function isNoteInChord(note) {
+    // 本来はchordMode/chordRootに応じて判定
+    return true;
+}
