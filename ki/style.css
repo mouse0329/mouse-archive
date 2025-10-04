@@ -1,3 +1,4 @@
+/* --- 全体・背景 --- */
 :root {
     --color-bg-main: #f9f7f4;
     --color-bg-grad: #f1e9e0;
@@ -61,6 +62,7 @@ h2 {
     text-shadow: 0 2px 8px var(--color-bg-grad);
 }
 
+/* --- 鍵盤 --- */
 #keyboard {
     display: flex;
     flex-wrap: nowrap;
@@ -129,50 +131,45 @@ h2 {
     animation: none;
 }
 
-.controls {
-    text-align: center;
-    margin-bottom: 16px;
+/* --- 上部バー --- */
+.topbar {
+    width: 100%;
     background: var(--color-controls-bg);
-    border-radius: 14px;
-    padding: 10px 0 6px 0;
+    border-bottom: 2px solid var(--color-controls-border);
     box-shadow: 0 2px 16px var(--color-controls-shadow);
+    padding: 8px 0 6px 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
     backdrop-filter: blur(18px) saturate(1.1);
     -webkit-backdrop-filter: blur(18px) saturate(1.1);
 }
 
-.controls select,
-.controls button,
-.controls input[type="number"] {
-    padding: 7px 12px;
-    margin: 2px 3px;
-    border-radius: 7px;
-    border: 1.2px solid var(--color-controls-border);
-    background: #fafdff;
-    color: #222;
-    font-weight: bold;
-    cursor: pointer;
+.topbar select,
+.topbar button,
+.topbar input[type="number"],
+.topbar label,
+.topbar input[type="checkbox"],
+.topbar input[type="range"],
+.topbar .system-btns {
+    margin: 2px 4px;
     font-size: 1em;
-    transition: 0.18s;
-    box-shadow: 0 1px 3px var(--color-key-shadow);
 }
 
-.controls select:focus,
-.controls button:focus,
-.controls input[type="number"]:focus {
-    outline: none;
-    border-color: #4e9af1;
-    box-shadow: 0 0 6px #b3d7ff;
+.topbar label {
+    font-weight: normal;
+    margin-right: 8px;
 }
 
-.controls select:hover,
-.controls button:hover {
-    background: var(--color-table-th-bg);
+.topbar .system-btns {
+    margin-left: 8px;
 }
 
-.controls label {
-    margin: 0 6px;
-}
-
+/* --- モーダル --- */
 .modal {
     display: none;
     position: fixed;
@@ -183,7 +180,7 @@ h2 {
     background: rgba(40, 60, 100, 0.22);
     justify-content: center;
     align-items: center;
-    z-index: 10;
+    z-index: 9999;
     /* すりガラス */
     backdrop-filter: blur(28px) saturate(1.2);
     -webkit-backdrop-filter: blur(28px) saturate(1.2);
@@ -251,6 +248,7 @@ h2 {
     color: var(--color-table-th);
 }
 
+/* --- テーブル --- */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -299,6 +297,7 @@ select:focus {
     border-top: 3px solid #4e9af1;
 }
 
+/* --- ボタン --- */
 button {
     border: none;
     background: var(--color-btn-bg);
@@ -328,6 +327,7 @@ button:hover {
     margin-top: 10px;
 }
 
+/* --- モーダル内見出し --- */
 .modal-content h3,
 .modal-content h4 {
     color: var(--color-table-th);
@@ -344,7 +344,7 @@ button:hover {
     margin-right: 10px;
 }
 
-/* スクロールバー美化 */
+/* --- スクロールバー --- */
 ::-webkit-scrollbar {
     width: 10px;
     background: var(--color-scrollbar-bg);
@@ -359,6 +359,69 @@ button:hover {
     background: var(--color-scrollbar-thumb-hover);
 }
 
+/* --- メトロノーム --- */
+.metronome-lamps {
+    display: inline-flex;
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 2px;
+}
+
+.metronome-lamp {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #e2d6c2;
+    border: 2px solid #cbb07a;
+    box-shadow: 0 2px 8px #d9c9b8;
+    opacity: 0.45;
+    transition: background 0.18s, opacity 0.18s, box-shadow 0.18s;
+    display: inline-block;
+}
+
+.metronome-lamp.active {
+    background: #f7c96b;
+    opacity: 1;
+    box-shadow: 0 0 16px #f7c96b, 0 2px 8px #d9c9b8;
+    border-color: #e6b13a;
+}
+
+.metronome-lamp.accent {
+    background: #ff6b6b;
+    box-shadow: 0 0 18px #ff6b6b, 0 2px 8px #d9c9b8;
+    border-color: #d43a3a;
+    opacity: 1;
+}
+
+/* --- システム機能ボタン --- */
+.system-btns {
+    display: inline-block;
+    margin-left: 12px;
+    vertical-align: middle;
+}
+
+.system-btns button {
+    background: #fbeee0;
+    color: #a36b2c;
+    border: 1.2px solid #e6d1b2;
+    box-shadow: 0 1px 3px #e6d1b2;
+    font-weight: bold;
+    border-radius: 7px;
+    padding: 7px 14px;
+    margin: 2px 3px;
+    transition: background 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
+    backdrop-filter: blur(10px) saturate(1.1);
+    -webkit-backdrop-filter: blur(10px) saturate(1.1);
+}
+
+.system-btns button:hover {
+    background: #f7d6a3;
+    color: #7a4a13;
+    box-shadow: 0 4px 16px #f7d6a3;
+    transform: scale(1.04);
+}
+
+/* --- レスポンシブ --- */
 @media(max-width:600px) {
     .key {
         width: 34px;

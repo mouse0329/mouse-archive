@@ -8,10 +8,8 @@
 </head>
 
 <body>
-
-    <h2>デジタルシンセサイザーweb</h2>
-    <div class="controls">
-        楽器:
+    <div class="topbar">
+        <span style="font-weight:bold;font-size:1.2em;margin-right:18px;">デジタルシンセサイザーweb</span>
         <select id="instrument">
             <option value="sine">サイン波</option>
             <option value="piano">ピアノ</option>
@@ -30,25 +28,44 @@
             <option value="triangle">三角波</option>
             <option value="sawtooth">ノコギリ波</option>
         </select>
-        <!-- MIDI出力ON/OFFチェックボックス追加 -->
-        <label style="margin-left:10px;">
+        <label>
             <input type="checkbox" id="midiOutputEnable">
             MIDI出力
         </label>
-        <label><input type="checkbox" id="showNoteLabel" checked> 鍵盤に音符表示</label>
+        <label>
+            <input type="checkbox" id="showNoteLabel" checked> 鍵盤に音符表示
+        </label>
         <button id="openModal">マッピング設定</button>
         <button id="openWaveKeyModal">楽器キー設定</button>
-        <button id="editInstrumentParam" style="margin-left:10px;">楽器パラメータ編集</button>
-        <label style="margin-left:10px;font-weight:bold;">
+        <button id="editInstrumentParam">楽器パラメータ編集</button>
+        <label>
             オクターブ:
             <input id="octaveInput" type="number" value="0" min="-4" max="4" style="width:50px;text-align:right;">
         </label>
-        <label style="margin-left:10px;font-weight:bold;">
+        <label>
             移調:
             <input id="transposeInput" type="number" value="0" min="-24" max="24" style="width:50px;text-align:right;">
         </label>
-        <button id="clearLocalStorage" style="margin-left:10px;">ローカルストレージ削除</button>
+        <button id="systemBtnsToggle">▼ システム機能</button>
+        <div class="system-btns" id="systemBtnsWrapper" style="display:none;">
+            <button id="clearLocalStorage">ローカルストレージ削除</button>
+        </div>
+        <label style="margin-left:10px;">
+            メトロノーム:
+            <input id="metronomeTempo" type="number" value="120" min="30" max="300"
+                style="width:50px;text-align:right;">
+            BPM
+            <input id="metronomeBeats" type="number" value="4" min="1" max="12" style="width:36px;text-align:right;"
+                title="拍子">
+            拍子
+            <input id="metronomeVolume" type="range" min="0" max="100" value="22"
+                style="vertical-align:middle;width:70px;" title="音量">
+            <span id="metronomeVolumeLabel" style="font-size:0.95em;">音量</span>
+            <button id="metronomeToggle">ON</button>
+        </label>
     </div>
+    <h2 style="display:none;">デジタルシンセサイザーweb</h2>
+    <div id="metronomeVisual" style="text-align:center;margin-bottom:16px;"></div>
     <div id="keyboard"></div>
     <div id="modal" class="modal">
         <div class="modal-content">

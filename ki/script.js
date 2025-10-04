@@ -56,7 +56,15 @@ let waveKeyMap = {
     F1: "sine",
     F2: "piano",
     F3: "violin",
-    F4: "clarinet"
+    F4: "clarinet",
+    F5: "flute",
+    F6: "brass",
+    F7: "sax",
+    F8: "guitar",
+    F9: "bass",
+    F10: "marimba",
+    F11: "vibraphone",
+    F12: "organ"
 };
 
 // 移調値
@@ -127,6 +135,12 @@ function playStart(keyOrCode) {
         gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + decay);
         osc.start();
         activeOsc[mapping.key] = { osc, gain, isOneShot: true };
+        // 音が消えるタイミングで鍵盤のactiveクラスも外す
+        setTimeout(() => {
+            delete activeOsc[mapping.key];
+            const keyDiv2 = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
+            if (keyDiv2) keyDiv2.classList.remove("active");
+        }, decay * 1000);
     }
 
     // --- マリンバ（修正版） ---
@@ -163,8 +177,12 @@ function playStart(keyOrCode) {
         // activeOsc に登録
         activeOsc[mapping.key] = { osc, osc2, osc3, gain, isOneShot: true };
 
-        // decay 終了後に activeOsc から削除
-        setTimeout(() => { delete activeOsc[mapping.key]; }, decay * 1000);
+        // decay 終了後に activeOsc から削除＆鍵盤のactiveクラスも外す
+        setTimeout(() => {
+            delete activeOsc[mapping.key];
+            const keyDiv2 = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
+            if (keyDiv2) keyDiv2.classList.remove("active");
+        }, decay * 1000);
     }
 
     // --- ビブラフォン ---
@@ -429,6 +447,7 @@ function playStop(keyOrCode) {
         if (o.noise) o.noise.disconnect();
         delete activeOsc[mapping.key];
     }
+    // playStopで必ず鍵盤のactiveクラスを外す
     const keyDiv = document.querySelector(".key[data-key='" + CSS.escape(mapping.key) + "']");
     if (keyDiv) keyDiv.classList.remove("active");
 }
@@ -436,7 +455,11 @@ function playStop(keyOrCode) {
 // キーボード描画
 function renderKeyboard() {
     const kb = document.getElementById("keyboard"); kb.innerHTML = "";
+    // noteごとに一つだけ表示
+    const shownNotes = new Set();
     keyMapJP.forEach(mapping => {
+        if (shownNotes.has(mapping.note)) return;
+        shownNotes.add(mapping.note);
         const div = document.createElement("div"); div.className = "key";
         if (mapping.color === "黒") div.classList.add("black");
         div.dataset.key = mapping.key;
@@ -728,18 +751,34 @@ function renderWaveKeyTable() {
     });
 }
 
+// 楽器キー設定モーダルを開くイベントを追加
 document.getElementById("openWaveKeyModal").addEventListener("click", () => {
     renderWaveKeyTable();
     document.getElementById("waveKeyModal").style.display = "flex";
 });
+
 document.querySelector(".wavekey-modal-close").addEventListener("click", () => {
     document.getElementById("waveKeyModal").style.display = "none";
 });
 window.addEventListener("click", e => {
     if (e.target === document.getElementById("waveKeyModal")) document.getElementById("waveKeyModal").style.display = "none";
 });
+
 document.getElementById("resetWaveKeyMap").addEventListener("click", () => {
-    waveKeyMap = { F1: "sine", F2: "square", F3: "triangle", F4: "sawtooth" };
+    waveKeyMap = {
+        F1: "sine",
+        F2: "square",
+        F3: "triangle",
+        F4: "sawtooth",
+        F5: "piano",
+        F6: "violin",
+        F7: "clarinet",
+        F8: "flute",
+        F9: "brass",
+        F10: "sax",
+        F11: "guitar",
+        F12: "bass"
+    };
     renderWaveKeyTable();
 });
 
@@ -1047,3 +1086,153 @@ if (midiEnableElem) {
     });
     midiOutputEnabled = midiEnableElem.checked;
 }
+
+// メトロノーム機能 強化
+let metronomeIntervalId = null;
+let metronomeIsOn = false;
+let metronomeTempo = 120;
+let metronomeBeats = 4;
+let metronomeBeatCount = 0;
+let metronomeVolume = 22; // 0～100
+
+// メトロノームクリック音（強拍・弱拍）
+function playMetronomeClick(isAccent) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = isAccent ? "triangle" : "square";
+    osc.frequency.value = isAccent ? 1800 : 1200;
+    // 音量をスライダー値で調整（0～100 → 0.0～1.0）
+    const baseVol = metronomeVolume / 100;
+    gain.gain.value = isAccent ? baseVol * 1.7 : baseVol;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    gain.gain.setValueAtTime(gain.gain.value, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + (isAccent ? 0.13 : 0.08));
+    osc.stop(audioCtx.currentTime + (isAccent ? 0.13 : 0.08));
+    setTimeout(() => {
+        gain.disconnect();
+    }, 150);
+}
+
+// メトロノーム視覚表示（ランプ描画・点灯）
+function renderMetronomeVisual() {
+    const container = document.getElementById("metronomeVisual");
+    container.innerHTML = "";
+    const lamps = document.createElement("div");
+    lamps.className = "metronome-lamps";
+    for (let i = 0; i < metronomeBeats; i++) {
+        const lamp = document.createElement("div");
+        lamp.className = "metronome-lamp";
+        lamp.id = "metronomeLamp" + i;
+        lamps.appendChild(lamp);
+    }
+    container.appendChild(lamps);
+}
+
+// 拍子変更時にランプ再描画
+document.getElementById("metronomeBeats").addEventListener("input", () => {
+    renderMetronomeVisual();
+});
+
+// ページ初期表示時
+window.addEventListener("DOMContentLoaded", () => {
+    renderMetronomeVisual();
+});
+
+// メトロノームランプ点灯
+function updateMetronomeLamps(currentBeat) {
+    for (let i = 0; i < metronomeBeats; i++) {
+        const lamp = document.getElementById("metronomeLamp" + i);
+        if (!lamp) continue;
+        lamp.classList.remove("active", "accent");
+        if (i === currentBeat) {
+            lamp.classList.add(i === 0 ? "accent" : "active");
+        }
+    }
+}
+
+// メトロノーム開始
+function startMetronome() {
+    if (metronomeIntervalId) clearInterval(metronomeIntervalId);
+    metronomeBeatCount = 0;
+    renderMetronomeVisual();
+    updateMetronomeLamps(0);
+    const interval = 60000 / metronomeTempo;
+    metronomeIntervalId = setInterval(() => {
+        playMetronomeClick(metronomeBeatCount % metronomeBeats === 0);
+        updateMetronomeLamps(metronomeBeatCount % metronomeBeats);
+        metronomeBeatCount = (metronomeBeatCount + 1) % metronomeBeats;
+    }, interval);
+    metronomeIsOn = true;
+    document.getElementById("metronomeToggle").textContent = "OFF";
+}
+
+// メトロノーム停止
+function stopMetronome() {
+    if (metronomeIntervalId) clearInterval(metronomeIntervalId);
+    metronomeIntervalId = null;
+    metronomeIsOn = false;
+    document.getElementById("metronomeToggle").textContent = "ON";
+    // ランプ消灯
+    for (let i = 0; i < metronomeBeats; i++) {
+        const lamp = document.getElementById("metronomeLamp" + i);
+        if (lamp) lamp.classList.remove("active", "accent");
+    }
+}
+
+// メトロノームON/OFFボタン
+document.getElementById("metronomeToggle").addEventListener("click", () => {
+    if (metronomeIsOn) {
+        stopMetronome();
+    } else {
+        startMetronome();
+    }
+});
+
+// テンポ入力欄
+document.getElementById("metronomeTempo").addEventListener("input", (e) => {
+    let v = parseInt(e.target.value, 10);
+    if (isNaN(v)) v = 120;
+    if (v < 30) v = 30;
+    if (v > 300) v = 300;
+    metronomeTempo = v;
+    e.target.value = v;
+    if (metronomeIsOn) {
+        startMetronome();
+    }
+});
+
+// 拍子入力欄
+document.getElementById("metronomeBeats").addEventListener("input", (e) => {
+    let v = parseInt(e.target.value, 10);
+    if (isNaN(v)) v = 4;
+    if (v < 1) v = 1;
+    if (v > 12) v = 12;
+    metronomeBeats = v;
+    e.target.value = v;
+    renderMetronomeVisual();
+    if (metronomeIsOn) {
+        startMetronome();
+    }
+});
+
+// メトロノーム音量スライダー
+document.getElementById("metronomeVolume").addEventListener("input", (e) => {
+    let v = parseInt(e.target.value, 10);
+    if (isNaN(v)) v = 22;
+    if (v < 0) v = 0;
+    if (v > 100) v = 100;
+    metronomeVolume = v;
+    document.getElementById("metronomeVolumeLabel").textContent = `音量(${v})`;
+});
+
+// システム機能ボタンの開閉
+const systemBtnsToggle = document.getElementById("systemBtnsToggle");
+const systemBtnsWrapper = document.getElementById("systemBtnsWrapper");
+let systemBtnsOpen = false;
+systemBtnsToggle.addEventListener("click", () => {
+    systemBtnsOpen = !systemBtnsOpen;
+    systemBtnsWrapper.style.display = systemBtnsOpen ? "inline-block" : "none";
+    systemBtnsToggle.textContent = systemBtnsOpen ? "▲ システム機能" : "▼ システム機能";
+});
