@@ -3,235 +3,41 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>デジタルシンセサイザーweb</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>localStorage 自動バックアップとリダイレクト</title>
 </head>
 
 <body>
-    <div class="topbar">
-        <span style="font-weight:bold;font-size:1.2em;margin-right:18px;">デジタルシンセサイザーweb</span>
-        <select id="instrument">
-            <option value="sine">サイン波</option>
-            <option value="piano">ピアノ</option>
-            <option value="violin">バイオリン</option>
-            <option value="clarinet">クラリネット</option>
-            <option value="flute">フルート</option>
-            <option value="brass">ブラス</option>
-            <option value="sax">サックス</option>
-            <option value="guitar">ギター</option>
-            <option value="bass">ベース</option>
-            <option value="marimba">マリンバ</option>
-            <option value="vibraphone">ビブラフォン</option>
-            <option value="organ">オルガン</option>
-            <option value="synth">シンセ</option>
-            <option value="square">矩形波</option>
-            <option value="triangle">三角波</option>
-            <option value="sawtooth">ノコギリ波</option>
-        </select>
-        <label>
-            <input type="checkbox" id="midiOutputEnable">
-            MIDI出力
-        </label>
-        <label>
-            <input type="checkbox" id="showNoteLabel" checked> 鍵盤に音符表示
-        </label>
-        <button id="openModal">マッピング設定</button>
-        <button id="openWaveKeyModal">楽器キー設定</button>
-        <button id="editInstrumentParam">楽器パラメータ編集</button>
-        <label>
-            オクターブ:
-            <input id="octaveInput" type="number" value="0" min="-4" max="4" style="width:50px;text-align:right;">
-        </label>
-        <label>
-            移調:
-            <input id="transposeInput" type="number" value="0" min="-24" max="24" style="width:50px;text-align:right;">
-        </label>
-        <button id="systemBtnsToggle">▼ システム機能</button>
-        <div class="system-btns" id="systemBtnsWrapper" style="display:none;">
-            <button id="clearLocalStorage">ローカルストレージ削除</button>
-        </div>
-        <label style="margin-left:10px;">
-            メトロノーム:
-            <input id="metronomeTempo" type="number" value="120" min="30" max="300"
-                style="width:50px;text-align:right;">
-            BPM
-            <input id="metronomeBeats" type="number" value="4" min="1" max="12" style="width:36px;text-align:right;"
-                title="拍子">
-            拍子
-            <input id="metronomeVolume" type="range" min="0" max="100" value="22"
-                style="vertical-align:middle;width:70px;" title="音量">
-            <span id="metronomeVolumeLabel" style="font-size:0.95em;">音量</span>
-            <button id="metronomeToggle">ON</button>
-        </label>
-        <!-- 録音・再生・ループ・オーバーダビング・停止ボタン追加 -->
-        <span style="margin-left:16px;">
-            <button id="recordBtn">録音</button>
-            <button id="playBtn">再生</button>
-            <button id="loopBtn">ループ</button>
-            <button id="overdubBtn">オーバーダブ</button>
-            <button id="stopBtn" disabled>停止</button>
-            <button id="exportWavBtn">WAVエクスポート</button>
-            <button id="exportMidiBtn">MIDIエクスポート</button>
-        </span>
-    </div>
-    <h2 style="display:none;">デジタルシンセサイザーweb</h2>
-    <div id="metronomeVisual" style="text-align:center;margin-bottom:16px;"></div>
-    <div id="keyboard"></div>
-    <!-- ▼ここからステップシーケンサーUI追加 -->
-    <div id="sequencerSection" style="margin:24px 0;">
-        <h3>ステップシーケンサー</h3>
-        <div id="sequencerGrid" style="overflow-x:auto;"></div>
-        <div style="margin-top:8px;">
-            <button id="sequencerPlayBtn">シーケンス再生</button>
-            <button id="sequencerStopBtn" disabled>停止</button>
-            <label>
-                ステップ数:
-                <input id="sequencerStepsInput" type="number" value="16" min="4" max="64" style="width:50px;">
-            </label>
-            <label>
-                チャンネル数:
-                <input id="sequencerChannelsInput" type="number" value="4" min="1" max="8" style="width:40px;">
-            </label>
-            <label>
-                シーケンサー速度:
-                <input id="sequencerTempoInput" type="number" value="120" min="30" max="300" style="width:50px;">
-                BPM
-            </label>
-        </div>
-        <div style="margin-top:12px;">
-            <label>
-                スケール:
-                <select id="scaleMode">
-                    <option value="off">制限なし</option>
-                    <option value="major">メジャー</option>
-                    <option value="minor">マイナー</option>
-                    <option value="pentatonic">ペンタトニック</option>
-                    <option value="blues">ブルース</option>
-                    <option value="dorian">ドリアン</option>
-                    <option value="mixolydian">ミクソリディアン</option>
-                </select>
-                ルート:
-                <select id="scaleRoot">
-                    <option value="C">C</option>
-                    <option value="C#">C#</option>
-                    <option value="D">D</option>
-                    <option value="D#">D#</option>
-                    <option value="E">E</option>
-                    <option value="F">F</option>
-                    <option value="F#">F#</option>
-                    <option value="G">G</option>
-                    <option value="G#">G#</option>
-                    <option value="A">A</option>
-                    <option value="A#">A#</option>
-                    <option value="B">B</option>
-                </select>
-            </label>
-            <label style="margin-left:16px;">
-                コード:
-                <select id="chordMode">
-                    <option value="off">制限なし</option>
-                    <option value="major">メジャー</option>
-                    <option value="minor">マイナー</option>
-                    <option value="seventh">7th</option>
-                    <option value="minor7">m7</option>
-                    <option value="sus4">sus4</option>
-                    <option value="dim">dim</option>
-                </select>
-                ルート:
-                <select id="chordRoot">
-                    <option value="C">C</option>
-                    <option value="C#">C#</option>
-                    <option value="D">D</option>
-                    <option value="D#">D#</option>
-                    <option value="E">E</option>
-                    <option value="F">F</option>
-                    <option value="F#">F#</option>
-                    <option value="G">G</option>
-                    <option value="G#">G#</option>
-                    <option value="A">A</option>
-                    <option value="A#">A#</option>
-                    <option value="B">B</option>
-                </select>
-            </label>
-        </div>
-        <small>各行は楽器/音階を選択できます。各列は拍（ステップ）です。</small>
-    </div>
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close">&times;</span>
-            <h3>マッピング設定</h3>
-            <table id="mappingTable">
-                <tr>
-                    <th>順番</th>
-                    <th>キー</th>
-                    <th>音</th>
-                    <th>色</th>
-                </tr>
-            </table>
-            <button id="addMapping">新しいマッピングを追加</button>
-        </div>
-    </div>
-    <!-- 波形ファンクションキー設定用モーダル -->
-    <div id="waveKeyModal" class="modal">
-        <div class="modal-content">
-            <span class="wavekey-modal-close"
-                style="float:right;cursor:pointer;font-weight:bold;font-size:20px;color:#888;">&times;</span>
-            <h3>波形ファンクションキー設定</h3>
-            <table id="waveKeyTable" style="width:100%;margin-bottom:10px;">
-                <tr>
-                    <th>ファンクションキー</th>
-                    <th>楽器</th>
-                </tr>
-            </table>
-            <button id="resetWaveKeyMap">デフォルトに戻す</button>
-        </div>
-    </div>
+    <h1>シンセサイザーは移動しました。いまからダウンロードされるファイルを移動先で読ませてください何卒よろしくお願いします。</h1>
 
-    <!-- ようこそモーダル -->
-    <div id="welcomeModal" class="modal" style="z-index:20;">
-        <div class="modal-content" style="text-align:center;">
-            <span id="welcomeClose"
-                style="float:right;cursor:pointer;font-weight:bold;font-size:20px;color:#888;">&times;</span>
-            <h2>ようこそ！</h2>
-            <p>デジタルシンセサイザーwebへようこそ。<br>
-                <small>（この画面は初回のみ表示されます）</small>
-            </p>
-            <ul style="text-align:left;max-width:350px;margin:0 auto 1em;">
-                <li>キーボードで演奏できます</li>
-                <li>波形やマッピングは自由にカスタマイズ可能</li>
-                <li>ファンクションキーで波形切替・矢印キーでオクターブ/移調</li>
-                <li>設定はローカルストレージに保存されます</li>
-            </ul>
-            <button id="welcomeOk" style="padding:8px 24px;font-size:16px;">OK</button>
-        </div>
-    </div>
+    <script>
+        (function () {
+            // localStorageをJSON化
+            const storageObj = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                storageObj[key] = localStorage.getItem(key);
+            }
 
-    <!-- 楽器パラメータ編集モーダル -->
-    <div id="instrumentParamModal" class="modal">
-        <div class="modal-content" style="max-width:400px;">
-            <span id="instrumentParamClose"
-                style="float:right;cursor:pointer;font-weight:bold;font-size:20px;color:#888;">&times;</span>
-            <h3>楽器パラメータ編集</h3>
-            <div id="instrumentParamForm"></div>
-            <button id="instrumentParamSave">保存</button>
-        </div>
-    </div>
+            const json = JSON.stringify(storageObj, null, 2);
+            const blob = new Blob([json], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
 
-    <div id="presetSection" style="margin:18px 0;">
-        <h3>プリセット管理</h3>
-        <select id="presetSelect" style="min-width:120px;"></select>
-        <button id="presetSaveBtn">保存</button>
-        <button id="presetLoadBtn">読み込み</button>
-        <button id="presetDeleteBtn">削除</button>
-        <button id="presetExportBtn">エクスポート</button>
-        <input type="file" id="presetImportInput" style="display:none;">
-        <button id="presetImportBtn">インポート</button>
-        <span id="presetStatus" style="margin-left:10px;color:#888;"></span>
-    </div>
+            // 自動ダウンロード
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "localStorage_backup.json";
+            document.body.appendChild(a); // Firefox向け
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
 
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <script src="script.js"></script>
-
+            // 5秒後にリダイレクト
+            setTimeout(() => {
+                window.location.href = "https://synthesizer-chu-web.netlify.app/";
+            }, 5000);
+        })();
+    </script>
 </body>
 
 </html>
