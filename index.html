@@ -40,8 +40,6 @@
                 style="margin:8px 0; border:none; border-radius:6px; padding:6px 16px; cursor:pointer;"></button>
             <button id="img-copy-btn">画像のリンクをコピーする</button>
             <select name="img-type">
-                <option value="WEBP">webp</option>
-                <option value="PNG">png</option>
             </select>
             <a id="download-btn" href="" download>ダウンロード</a>
             <div id="modal-close">閉じるチュー ✖️</div>
@@ -110,22 +108,81 @@
         </div>
     </div>
 
+    <!-- トーストメッセージ -->
     <div id="toast"
         style="display:none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
- background-color: #333; color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 14px; opacity: 0.9; z-index: 10000;">
+     background-color: #333; color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 14px; opacity: 0.9; z-index: 10000;">
         コピーしましたチュー！
     </div>
+
+    <!-- ウェルカムモーダル -->
+    <!-- ウェルカムモーダル -->
+    <div id="welcomeModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; 
+     background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:10000;">
+        <div
+            style="position:relative; background:#fff; border-radius:12px; padding:24px; min-width:320px; max-width:90vw; font-size: 18px;">
+            <h1 id="main-title"><img src="imgs/mouse-archive.webp" alt="ネズミアーカイブアイコン">ネズミアーカイブ</h1>
+
+            <p>ネズミアーカイブへようこそチュー！</p>
+            <p>ネズミの画像や情報は、<strong>個人利用・教育目的のみ</strong>で利用できます。</p>
+            <p>商業利用は禁止されていますチュー。</p>
+            <p>画像の著作権は各権利者に帰属します。</p>
+            <p>
+                詳しい著作権情報は
+                <a href="li/index.html" target="_blank">こちらのページ</a>をご覧ください
+            </p>
+
+            <!-- 規約確認チェックボックス -->
+            <div style="margin-top:12px;">
+                <label>
+                    <input type="checkbox" id="termsCheck"> 利用規約を確認しました
+                </label>
+                <br>
+                <button id="welcomeClose" disabled style="margin-top:8px; padding:6px 12px;">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('welcomeModal');
+            const closeBtn = document.getElementById('welcomeClose');
+            const termsCheck = document.getElementById('termsCheck');
+
+            // まだ確認していなければモーダル表示
+            if (!localStorage.getItem('welcomeAccepted')) {
+                modal.style.display = 'flex';
+            }
+
+            // チェックでボタン有効化
+            termsCheck.addEventListener('change', () => {
+                closeBtn.disabled = !termsCheck.checked;
+            });
+
+            // 閉じるボタンで非表示 & ローカルストレージ記録
+            closeBtn.addEventListener('click', () => {
+                if (termsCheck.checked) {
+                    localStorage.setItem('welcomeAccepted', 'true');
+                    modal.style.display = 'none';
+                }
+            });
+        });
+    </script>
+
+
     <footer>
-        <p>このサイトはネズミの画像を集めたアーカイブです。クリックで拡大表示できます。</p>
-        <p>画像の著作権は各権利者に帰属します。</p>
-        <p>商業利用は禁止されています。</p>
+        <p>このサイトはネズミの画像を集めたアーカイブです。クリックで拡大表示できますチュー。</p>
+        <p>画像の著作権は各権利者に帰属しますチュー。</p>
+        <p><strong>個人利用・教育目的のみ</strong>利用可能ですチュー。商業利用は禁止されていますチュー。</p>
         <p>
-            商業利用禁止 ©
+            著作権表示 ©
             <a href="https://github.com/mouse0329" target="_blank" rel="noopener noreferrer">mouse0329 (GitHub)</a>・
             <a href="https://www.npmjs.com/~mouse0329" target="_blank" rel="noopener noreferrer">mouse0329 (npm)</a>
         </p>
         <a href="li/index.html">詳しい情報はこちら</a>
     </footer>
+
     <script src="index.js"></script>
 </body>
 

@@ -59,28 +59,53 @@ document.addEventListener('click', function (e) {
 // 画像用モーダルを開く
 const openImageModal = (filename, description, detail, author, tags) => {
     const ext = filename.split('.').pop().toUpperCase();
-    const url = `${location.origin}/imgs/${filename}`;
     const modal = document.getElementById('modal');
-    const imgTypeSelect = document.querySelector('select[name="img-type"]');
     const modalImg = document.getElementById('modal-img');
     const downloadBtn = document.getElementById('download-btn');
     const copyBtn = document.getElementById('img-copy-btn');
+    const imgTypeSelect = document.querySelector('select[name="img-type"]');
+
+    // selectにSVG追加（未追加なら）
+    if (!Array.from(imgTypeSelect.options).some(o => o.value === 'SVG')) {
+        ['WEBP', 'PNG', 'SVG'].forEach(type => {
+            const opt = document.createElement('option');
+            opt.value = type;
+            opt.textContent = type;
+            imgTypeSelect.appendChild(opt);
+        });
+    }
+
+    // 画像URL作成
+    let url = `${location.origin}/imgs/${filename}`;
+
+    // 画像読み込みエラー時に代替画像表示
+    modalImg.onerror = () => {
+        modalImg.src = `${location.origin}/imgs/404.webp`; // 代替画像パス
+        modalImg.alt = '代替画像';
+        downloadBtn.href = '#';
+        downloadBtn.download = '';
+        copyBtn.dataset.url = '';
+        showToast('画像が見つかりません…', 2000, '#f66');
+    };
 
     modalImg.src = url;
     modalImg.alt = filename;
     document.getElementById('modal-caption').textContent = description || filename;
+
     // detail表示
     const modalDetail = document.getElementById('modal-detail');
     if (modalDetail) {
         modalDetail.textContent = detail || '';
         modalDetail.style.display = detail ? 'block' : 'none';
     }
+
     // author表示
     const modalAuthor = document.getElementById('modal-author');
     if (modalAuthor) {
         modalAuthor.textContent = author ? `by ${author}` : '';
         modalAuthor.style.display = author ? 'block' : 'none';
     }
+
     // タグ表示
     const modalTags = document.getElementById('modal-tags');
     if (modalTags) {
@@ -90,10 +115,9 @@ const openImageModal = (filename, description, detail, author, tags) => {
 
     downloadBtn.href = url;
     downloadBtn.download = filename;
+    copyBtn.dataset.url = url;
 
-    copyBtn.dataset.url = location.origin + "/viewer.html" + `?img=${filename}`;
-
-    // お気に入りボタン生成・設置
+    // お気に入りボタン生成
     let favBtn = document.getElementById('modal-fav-btn');
     if (!favBtn) {
         favBtn = document.createElement('button');
@@ -108,20 +132,37 @@ const openImageModal = (filename, description, detail, author, tags) => {
     }
     updateModalFavorite('image', filename, description);
 
-    // selectの初期値セット
-    if (ext === 'WEBP' || ext === 'PNG') {
+    // select初期値設定
+    if (['WEBP', 'PNG', 'SVG'].includes(ext)) {
         imgTypeSelect.value = ext;
     } else {
         imgTypeSelect.value = 'WEBP';
     }
 
+    // select変更時の処理
+    imgTypeSelect.onchange = () => {
+        const selectedType = imgTypeSelect.value.toLowerCase();
+        const baseName = filename.replace(/\.[^.]+$/, '');
+        const newFilename = `${baseName}.${selectedType}`;
+        const newUrl = `${location.origin}/imgs/${newFilename}`;
+
+        modalImg.src = newUrl;
+        modalImg.alt = newFilename;
+
+        downloadBtn.href = newUrl;
+        downloadBtn.download = newFilename;
+        copyBtn.dataset.url = newUrl;
+    };
+
     modal.style.display = 'flex';
 
+    // URLパラメータ追加
     const params = new URLSearchParams(window.location.search);
     params.set('img', filename);
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     history.replaceState(null, '', newUrl);
 };
+
 
 // 画像用モーダルを閉じる
 const closeImageModal = () => {
