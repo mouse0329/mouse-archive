@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>ネズミアーカイブ</title>
+    <link rel="stylesheet" href="index.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="ネズミの画像を集めたアーカイブです。クリックで拡大表示できます。" />
+    <meta name="keywords" content="ネズミ, 画像, アーカイブ, マウス, ネズミ画像" />
+    <meta name="author" content="mouse0329" />
+    <meta property="og:title" content="ネズミアーカイブ" />
+    <meta property="og:description" content="ネズミの画像を集めたアーカイブです。クリックで拡大表示できます。" />
+    <link rel="icon" href="imgs/mouse-archive.webp" type="image/webp" />
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+</head>
+
+
+<body>
+    <h1 id="main-title"><img src="imgs/mouse-archive.webp" alt="ネズミアーカイブアイコン">ネズミアーカイブ</h1>
+    <div id="searchContainer">
+        <input type="text" id="searchInput" placeholder="名前で検索するチュー…" />
+        <input type="button" value="検索をクリア"
+            onclick="document.getElementById('searchInput').value=''; document.getElementById('imgContainer').innerHTML=''; document.getElementById('resultCount').textContent='';searchAndFilter()" />
+        <button id="show-favorites-btn" style="margin-left:8px;">お気に入り一覧</button>
+    </div>
+    <div id="resultCount" style="margin-bottom: 10px; font-weight: bold;"></div>
+
+
+    <div class="img-container" id="imgContainer"></div>
+    <div id="modal" style="display:none;">
+        <div id="modal-content">
+            <img id="modal-img" src="" alt="">
+            <p id="modal-caption"></p>
+            <div id="modal-detail" style="display:none; color:#666; font-size:0.9em; margin-top:4px;"></div>
+            <div id="modal-author" style="display:none; color:#999; font-size:0.8em; margin-top:2px;"></div>
+            <div id="modal-tags" style="display:none; margin-top:6px; font-size:0.95em;"></div>
+            <button id="modal-fav-btn"
+                style="margin:8px 0; border:none; border-radius:6px; padding:6px 16px; cursor:pointer;"></button>
+            <button id="img-copy-btn">画像のリンクをコピーする</button>
+            <select name="img-type">
+            </select>
+            <a id="download-btn" href="" download>ダウンロード</a>
+            <div id="modal-close">閉じるチュー ✖️</div>
+        </div>
+    </div>
+    <div id="error_window"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1000;">
+        <div style="position:relative; background:#fff; border-radius:12px; padding:20px;display: flex;">
+            <button id="error-close" style="position:absolute; top:10px; right:10px;">✖</button>
+            <div style="display: flex; align-items: center;flex-direction: column;">
+                <h1 id="main-title"><img src="imgs/mouse-archive.webp" alt="ネズミアーカイブアイコン">ネズミアーカイブ</h1>
+                <div style="display: flex;flex-direction: row;align-items: flex-end;">
+                    <img src="/imgs/Mouse_loss.webp" alt="エラー画像" style="width: 50px; height:50px; border-radius:12px;">
+                    <p id="error-message" style="color:red; margin: 50px 0 0 0px;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="model-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1000;">
+        <div style="position:relative; background:#fff; border-radius:12px; padding:20px;">
+            <button id="model-close" style="position:absolute; top:10px; right:10px;">✖</button>
+            <model-viewer id="model-viewer" camera-controls auto-rotate ar
+                style="width:80vw; height:80vh;"></model-viewer>
+            <p id="model-caption" style="text-align:center; margin-top:10px;"></p>
+            <div id="model-detail"
+                style="display:none; color:#666; font-size:0.9em; margin-top:4px; text-align:center;"></div>
+            <div id="model-author"
+                style="display:none; color:#999; font-size:0.8em; margin-top:2px; text-align:center;"></div>
+            <div id="model-tags" style="display:none; margin-top:6px; font-size:0.95em; text-align:center;"></div>
+            <button id="model-fav-btn"
+                style="margin:8px 0; border:none; border-radius:6px; padding:6px 16px; cursor:pointer;"></button>
+            <button id="model-copy-btn">モデルのリンクをコピーする</button>
+            <a id="model-download-btn" href="" download style="margin-left:8px;">ダウンロード</a>
+        </div>
+    </div>
+
+    <div id="video-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1000;">
+        <div style="position:relative; background:#fff; border-radius:12px; padding:20px;">
+            <button id="video-close" style="position:absolute; top:10px; right:10px;">✖</button>
+            <video id="video-player" controls
+                style="width:80vw; max-height:70vh; display:block; margin:0 auto;"></video>
+            <p id="video-caption" style="text-align:center; margin-top:10px;"></p>
+            <div id="video-detail"
+                style="display:none; color:#666; font-size:0.9em; margin-top:4px; text-align:center;"></div>
+            <div id="video-author"
+                style="display:none; color:#999; font-size:0.8em; margin-top:2px; text-align:center;"></div>
+            <div id="video-tags" style="display:none; margin-top:6px; font-size:0.95em; text-align:center;"></div>
+            <button id="video-fav-btn"
+                style="margin:8px 0; border:none; border-radius:6px; padding:6px 16px; cursor:pointer;"></button>
+            <button id="video-copy-btn">動画のリンクをコピーする</button>
+            <a id="video-download-btn" href="" download style="margin-left:8px;">ダウンロード</a>
+        </div>
+    </div>
+
+    <!-- お気に入りリストモーダル -->
+    <div id="favorites-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:10000;">
+        <div
+            style="position:relative; background:#fff; border-radius:12px; padding:24px; min-width:320px; max-width:90vw;">
+            <button id="favorites-close" style="position:absolute; top:10px; right:10px;">✖</button>
+            <h2 style="margin-top:0;">お気に入り一覧</h2>
+            <div id="favorites-list"></div>
+        </div>
+    </div>
+
+    <!-- トーストメッセージ -->
+    <div id="toast"
+        style="display:none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+     background-color: #333; color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 14px; opacity: 0.9; z-index: 10000;">
+        コピーしましたチュー！
+    </div>
+
+    <!-- ウェルカムモーダル -->
+    <!-- ウェルカムモーダル -->
+    <div id="welcomeModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; 
+     background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:10000;">
+        <div
+            style="position:relative; background:#fff; border-radius:12px; padding:24px; min-width:320px; max-width:90vw; font-size: 18px;">
+            <h1 id="main-title"><img src="imgs/mouse-archive.webp" alt="ネズミアーカイブアイコン">ネズミアーカイブ</h1>
+
+            <p>ネズミアーカイブへようこそチュー！</p>
+            <p>ネズミの画像や情報は、<strong>個人利用・教育目的のみ</strong>で利用できます。</p>
+            <p>商業利用は禁止されていますチュー。</p>
+            <p>画像の著作権は各権利者に帰属します。</p>
+            <p>
+                詳しい著作権情報は
+                <a href="li/index.html" target="_blank">こちらのページ</a>をご覧ください
+            </p>
+
+            <!-- 規約確認チェックボックス -->
+            <div style="margin-top:12px;">
+                <label>
+                    <input type="checkbox" id="termsCheck"> 利用規約を確認しました
+                </label>
+                <br>
+                <button id="welcomeClose" disabled style="margin-top:8px; padding:6px 12px;">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('welcomeModal');
+            const closeBtn = document.getElementById('welcomeClose');
+            const termsCheck = document.getElementById('termsCheck');
+
+            // まだ確認していなければモーダル表示
+            if (!localStorage.getItem('welcomeAccepted')) {
+                modal.style.display = 'flex';
+            }
+
+            // チェックでボタン有効化
+            termsCheck.addEventListener('change', () => {
+                closeBtn.disabled = !termsCheck.checked;
+            });
+
+            // 閉じるボタンで非表示 & ローカルストレージ記録
+            closeBtn.addEventListener('click', () => {
+                if (termsCheck.checked) {
+                    localStorage.setItem('welcomeAccepted', 'true');
+                    modal.style.display = 'none';
+                }
+            });
+        });
+    </script>
+
+
+    <footer>
+        <p>このサイトはネズミの画像を集めたアーカイブです。クリックで拡大表示できますチュー。</p>
+        <p>画像の著作権は各権利者に帰属しますチュー。</p>
+        <p><strong>個人利用・教育目的のみ</strong>利用可能ですチュー。商業利用は禁止されていますチュー。</p>
+        <p>
+            著作権表示 ©
+            <a href="https://github.com/mouse0329" target="_blank" rel="noopener noreferrer">mouse0329 (GitHub)</a>・
+            <a href="https://www.npmjs.com/~mouse0329" target="_blank" rel="noopener noreferrer">mouse0329 (npm)</a>
+        </p>
+        <a href="li/index.html">詳しい情報はこちら</a>
+    </footer>
+
+    <script src="index.js"></script>
+</body>
+
+</html>
