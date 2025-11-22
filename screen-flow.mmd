@@ -1,0 +1,58 @@
+%% アーカイブ投稿サイト — 画面フロー図 (Mermaid)
+%% ファイル: public/diagrams/screen-flow.mmd
+flowchart LR
+  %% ユーザー向け画面
+  Home["投稿一覧\n(Home)"]
+  Detail["投稿詳細\n(Post Detail)"]
+  Create["投稿作成\n(Create Post)"]
+  Auth["認証画面\n(Google / GitHub)"]
+
+  %% アップロード / バックエンド
+  Worker["Cloudflare Worker\n(Upload API)"]
+  R2["Cloudflare R2\n(Object Storage)"]
+  Firestore["Firestore\n(Posts / Comments)"]
+
+  %% コメント・表示
+  Comment["コメント入力\n(Realtime)"]
+  Viewer["ファイル表示\n(画像/動画/3D) "]
+
+  %% フロー
+  Home -->|クリック: 投稿を表示| Detail
+  Home -->|新規作成| Create
+  Detail --> Viewer
+  Detail --> Comment
+  Comment -->|保存| Firestore
+
+  Create -->|未認証時| Auth
+  Create -->|ファイル送信| Worker
+  Worker -->|保存| R2
+  Worker -->|投稿データ作成| Firestore
+  Firestore --> Detail
+
+  %% 補助線
+  Auth -->|認証トークン| Create
+  Viewer --> Firestore
+
+  %% 補足: 制約や処理
+  classDef note fill:#fff7cc,stroke:#e6b800
+  Note1["制約: ファイル最大500MB\nWorkers実行時間に注意"]:::note
+  Note1 -.-> Worker
+
+  %% サブグラフで見やすく
+  subgraph Frontend [フロントエンド]
+    Home
+    Detail
+    Create
+    Auth
+    Viewer
+    Comment
+  end
+
+  subgraph Backend [バックエンド・ストレージ]
+    Worker
+    R2
+    Firestore
+  end
+
+  %% 最後に簡単な説明ノート
+  %% このMermaidファイルは `public/diagrams/screen-flow.svg` に変換してください。
