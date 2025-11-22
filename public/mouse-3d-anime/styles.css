@@ -1,0 +1,93 @@
+/* フルモダンUIスタイル */
+.ui-panel {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 16px;
+    border-radius: 16px;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.ui-panel:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+}
+
+.ui-colorpicker {
+    width: 44px;
+    height: 44px;
+    padding: 2px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    background: linear-gradient(145deg, #ff6a00, #ffcc00);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(145deg, #ff6a00, #ffcc00);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: none;
+    /* 枠線を消す */
+    outline: none;
+    /* フォーカス時の青枠も消す */
+    background: transparent;
+    /* 必要なら背景も透明に */
+    -webkit-appearance: none;
+    /* Chrome, Safari */
+    -moz-appearance: none;
+    /* Firefox */
+    appearance: none;
+    /* 標準 */
+}
+
+.ui-colorpicker:hover {
+    transform: scale(1.15);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.ui-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.ui-label {
+    color: #000000;
+    font-size: 14px;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    user-select: none;
+}
+
+.ui-range {
+    width: 180px;
+    height: 8px;
+    border-radius: 4px;
+    accent-color: #1de9b6;
+    /* ネオン風のスライダー */
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ui-range:hover {
+    transform: scaleY(1.1);
+}
+
+.ui-speedValue {
+    font-size: 14px;
+    width: 48px;
+    text-align: right;
+    color: #000000;
+    font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}

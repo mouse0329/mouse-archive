@@ -1,0 +1,42 @@
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>GLB モデル読み込みと色変更サンプル (three.js)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <canvas id="c"></canvas>
+    <div class="ui-panel">
+        <input type="color" id="colorPicker" value="#ffffff" class="ui-colorpicker">
+        <div class="ui-controls">
+            <label for="speedSlider" class="ui-label">Speed</label>
+            <input type="range" id="speedSlider" min="0" max="3" step="0.01" value="1" class="ui-range">
+            <span id="speedValue" class="ui-speedValue">1.00</span>
+        </div>
+    </div>
+
+    <script type="importmap">
+{
+  "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/"
+  }
+}
+</script>
+    <script type="module" src="index.js"></script>
+</body>
+
+</html>
