@@ -187,6 +187,13 @@ const openModelModal = (filename, description, detail, author, tags) => {
     const modelCaption = document.getElementById('model-caption');
     const modelCopyBtn = document.getElementById('model-copy-btn');
     const modelDownloadBtn = document.getElementById('model-download-btn');
+    const modelOtherViewer = document.getElementById('model-other-viewer');
+
+    // 別のビュワーリンク設定
+    if (modelOtherViewer) {
+        const modelPath = `/models/${filename}`;
+        modelOtherViewer.href = `mouse-3d-anime/index.html?model=${modelPath}`;
+    }
 
     modelViewer.src = `models/${filename}`;
     modelCaption.textContent = description || filename;

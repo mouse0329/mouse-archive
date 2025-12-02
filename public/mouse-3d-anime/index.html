@@ -26,6 +26,25 @@
             <input type="range" id="speedSlider" min="0" max="3" step="0.01" value="1" class="ui-range">
             <span id="speedValue" class="ui-speedValue">1.00</span>
         </div>
+        <!-- 追加: メタリック切替 -->
+        <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="metallicToggle">
+            <span class="ui-label" style="font-weight:500;">メタリック</span>
+        </label>
+        <!-- 追加: 色をつけないモード -->
+        <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="noColorToggle" checked>
+            <span class="ui-label" style="font-weight:500;">色をつけない</span>
+        </label>
+        <!-- モデル切替ボタン -->
+        <div class="ui-nav">
+            <button id="prevModel" title="前のモデル">◀</button>
+            <button id="nextModel" title="次のモデル">▶</button>
+        </div>
+        <div class="ui-modelInfo">
+            <div id="modelName" class="ui-modelName">モデル名: ---</div>
+            <div id="modelAuthor" class="ui-modelAuthor"></div>
+        </div>
     </div>
 
     <script type="importmap">
