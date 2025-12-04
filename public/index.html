@@ -29,20 +29,6 @@
             onclick="document.getElementById('searchInput').value=''; document.getElementById('imgContainer').innerHTML=''; document.getElementById('resultCount').textContent='';searchAndFilter()" />
         <button id="show-favorites-btn" style="margin-left:8px;">お気に入り一覧</button>
 
-        <!-- 管理者による追加は管理画面（/admin.html）で行ってください -->
-        <span id="addUrlMsg" style="margin-left:8px; color:#1976d2;"></span>
-
-        <!-- 追加: 認証UI表示 -->
-        <div id="authControls" style="display:flex; align-items:center; margin-left:12px;">
-            <button id="signInBtn" style="margin-right:6px;">Googleでログイン</button>
-            <button id="signOutBtn" style="margin-right:6px; display:none;">ログアウト</button>
-            <span id="userInfo" style="font-size:0.95em; color:#333;"></span>
-            <span id="adminBadge"
-                style="margin-left:8px; color:#fff; background:#1976d2; padding:2px 8px; border-radius:6px; display:none; font-weight:600;">管理者</span>
-        </div>
-
-        <!-- 管理者用: 移行ページへのリンク（JS で表示制御） -->
-        <a id="migratePageLink" href="migrate.html" style="margin-left:12px; display:none;">移行ページ（管理者用）</a>
     </div>
     <div id="resultCount" style="margin-bottom: 10px; font-weight: bold;"></div>
 
