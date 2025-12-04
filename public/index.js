@@ -57,30 +57,33 @@ document.addEventListener('click', function (e) {
 });
 
 // 画像用モーダルを開く
-const openImageModal = (filename, description, detail, author, tags) => {
-    const ext = filename.split('.').pop().toUpperCase();
+const openImageModal = (filename, description, detail, author, tags, url) => {
     const modal = document.getElementById('modal');
     const modalImg = document.getElementById('modal-img');
     const downloadBtn = document.getElementById('download-btn');
     const copyBtn = document.getElementById('img-copy-btn');
     const imgTypeSelect = document.querySelector('select[name="img-type"]');
 
-    // selectにSVG追加（未追加なら）
-    if (!Array.from(imgTypeSelect.options).some(o => o.value === 'SVG')) {
-        ['WEBP', 'PNG', 'SVG'].forEach(type => {
-            const opt = document.createElement('option');
-            opt.value = type;
-            opt.textContent = type;
-            imgTypeSelect.appendChild(opt);
-        });
-    }
+    // 画像URL作成（item.url を優先）
+    let srcUrl = url || `${location.origin}/imgs/${filename}`;
 
-    // 画像URL作成
-    let url = `${location.origin}/imgs/${filename}`;
+    // select 有効/無効制御（外部URLならフォーマット切替不可にする）
+    if (imgTypeSelect) {
+        imgTypeSelect.disabled = !!(url && !url.startsWith(location.origin + '/imgs/'));
+        // selectにSVG追加（未追加なら）
+        if (!imgTypeSelect.disabled && !Array.from(imgTypeSelect.options).some(o => o.value === 'SVG')) {
+            ['WEBP', 'PNG', 'SVG'].forEach(type => {
+                const opt = document.createElement('option');
+                opt.value = type;
+                opt.textContent = type;
+                imgTypeSelect.appendChild(opt);
+            });
+        }
+    }
 
     // 画像読み込みエラー時に代替画像表示
     modalImg.onerror = () => {
-        modalImg.src = `${location.origin}/imgs/404.webp`; // 代替画像パス
+        modalImg.src = `${location.origin}/imgs/404.webp`;
         modalImg.alt = '代替画像';
         downloadBtn.href = '#';
         downloadBtn.download = '';
@@ -88,7 +91,7 @@ const openImageModal = (filename, description, detail, author, tags) => {
         showToast('画像が見つかりません…', 2000, '#f66');
     };
 
-    modalImg.src = url;
+    modalImg.src = srcUrl;
     modalImg.alt = filename;
     document.getElementById('modal-caption').textContent = description || filename;
 
@@ -113,9 +116,9 @@ const openImageModal = (filename, description, detail, author, tags) => {
         modalTags.style.display = (tags && tags.length) ? 'block' : 'none';
     }
 
-    downloadBtn.href = url;
+    downloadBtn.href = srcUrl;
     downloadBtn.download = filename;
-    copyBtn.dataset.url = url;
+    copyBtn.dataset.url = srcUrl;
 
     // お気に入りボタン生成
     let favBtn = document.getElementById('modal-fav-btn');
@@ -132,15 +135,19 @@ const openImageModal = (filename, description, detail, author, tags) => {
     }
     updateModalFavorite('image', filename, description);
 
-    // select初期値設定
-    if (['WEBP', 'PNG', 'SVG'].includes(ext)) {
-        imgTypeSelect.value = ext;
-    } else {
-        imgTypeSelect.value = 'WEBP';
+    // select初期値設定（ローカルパスの場合みのみ）
+    const ext = filename.split('.').pop().toUpperCase();
+    if (!imgTypeSelect.disabled) {
+        if (['WEBP', 'PNG', 'SVG'].includes(ext)) {
+            imgTypeSelect.value = ext;
+        } else {
+            imgTypeSelect.value = 'WEBP';
+        }
     }
 
-    // select変更時の処理
+    // select変更時の処理（ローカルパスのみ）
     imgTypeSelect.onchange = () => {
+        if (imgTypeSelect.disabled) return;
         const selectedType = imgTypeSelect.value.toLowerCase();
         const baseName = filename.replace(/\.[^.]+$/, '');
         const newFilename = `${baseName}.${selectedType}`;
@@ -181,7 +188,7 @@ const closeImageModal = () => {
 };
 
 // 3Dモデル用モーダルを開く
-const openModelModal = (filename, description, detail, author, tags) => {
+const openModelModal = (filename, description, detail, author, tags, url) => {
     const modelModal = document.getElementById('model-modal');
     const modelViewer = document.getElementById('model-viewer');
     const modelCaption = document.getElementById('model-caption');
@@ -189,18 +196,20 @@ const openModelModal = (filename, description, detail, author, tags) => {
     const modelDownloadBtn = document.getElementById('model-download-btn');
     const modelOtherViewer = document.getElementById('model-other-viewer');
 
+    const srcUrl = url || `${location.origin}/models/${filename}`;
+
     // 別のビュワーリンク設定
     if (modelOtherViewer) {
-        const modelPath = `/models/${filename}`;
+        const modelPath = url || `/models/${filename}`;
         modelOtherViewer.href = `mouse-3d-anime/index.html?model=${modelPath}`;
     }
 
-    modelViewer.src = `models/${filename}`;
+    modelViewer.src = srcUrl;
     modelCaption.textContent = description || filename;
-    modelCopyBtn.dataset.url = location.origin + "/viewer.html" + `?model=${filename}`;
+    modelCopyBtn.dataset.url = srcUrl || (location.origin + "/viewer.html" + `?model=${filename}`);
     // ダウンロードボタン設定
     if (modelDownloadBtn) {
-        modelDownloadBtn.href = `${location.origin}/models/${filename}`;
+        modelDownloadBtn.href = srcUrl;
         modelDownloadBtn.download = filename;
     }
 
@@ -239,7 +248,7 @@ const openModelModal = (filename, description, detail, author, tags) => {
 
     modelModal.style.display = 'flex';
 
-    // URLにモデルパラメータ追加
+    // URLにモデルパラメータ追加（クエリは filename のみ保持）
     const params = new URLSearchParams(window.location.search);
     params.set('model', filename);
     const newUrl = `${window.location.pathname}?${params.toString()}`;
@@ -263,19 +272,21 @@ const closeModelModal = () => {
 };
 
 // 動画用モーダルを開く
-const openVideoModal = (filename, description, detail, author, tags) => {
+const openVideoModal = (filename, description, detail, author, tags, url) => {
     const videoModal = document.getElementById('video-modal');
     const videoPlayer = document.getElementById('video-player');
     const videoCaption = document.getElementById('video-caption');
     const videoCopyBtn = document.getElementById('video-copy-btn');
     const videoDownloadBtn = document.getElementById('video-download-btn');
 
-    videoPlayer.src = `videos/${filename}`;
+    const srcUrl = url || `videos/${filename}`;
+
+    videoPlayer.src = srcUrl;
     videoCaption.textContent = description || filename;
-    videoCopyBtn.dataset.url = location.origin + "/viewer.html" + `?video=${filename}`;
+    videoCopyBtn.dataset.url = srcUrl || (location.origin + "/viewer.html" + `?video=${filename}`);
     // ダウンロードボタン設定
     if (videoDownloadBtn) {
-        videoDownloadBtn.href = `${location.origin}/videos/${filename}`;
+        videoDownloadBtn.href = srcUrl;
         videoDownloadBtn.download = filename;
     }
 
@@ -337,6 +348,70 @@ const closeVideoModal = () => {
     history.replaceState(null, '', newUrl);
 };
 
+// 追加: Webサイト用モーダルを開く
+const openWebsiteModal = (filename, description, detail, author, tags, url, thumbnail) => {
+    const modal = document.getElementById('website-modal');
+    const img = document.getElementById('website-img');
+    const caption = document.getElementById('website-caption');
+    const detailDiv = document.getElementById('website-detail');
+    const authorDiv = document.getElementById('website-author');
+    const tagsDiv = document.getElementById('website-tags');
+    const linkBtn = document.getElementById('website-link-btn');
+    const copyBtn = document.getElementById('website-copy-btn');
+
+    // サムネイル設定
+    const src = thumbnail || `${location.origin}/imgs/web-icon.webp`;
+    img.src = src;
+    img.alt = description || filename;
+
+    // キャプション・説明・著者・タグ
+    caption.textContent = description || filename;
+    detailDiv.textContent = detail || '';
+    detailDiv.style.display = detail ? 'block' : 'none';
+    authorDiv.textContent = author ? `by ${author}` : '';
+    authorDiv.style.display = author ? 'block' : 'none';
+    tagsDiv.innerHTML = renderTags(tags);
+    tagsDiv.style.display = (tags && tags.length) ? 'block' : 'none';
+
+    // リンク・コピーボタン設定
+    linkBtn.href = url;
+    copyBtn.dataset.url = url;
+
+    // お気に入りボタン生成・設置
+    let favBtn = document.getElementById('website-fav-btn');
+    if (!favBtn) {
+        favBtn = document.createElement('button');
+        favBtn.id = 'website-fav-btn';
+        favBtn.style.margin = '8px 0';
+        favBtn.style.border = 'none';
+        favBtn.style.borderRadius = '6px';
+        favBtn.style.padding = '6px 16px';
+        favBtn.style.cursor = 'pointer';
+    }
+    updateModalFavorite('website', filename, description);
+
+    // URLパラメータ追加
+    const params = new URLSearchParams(window.location.search);
+    params.set('website', filename);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    history.replaceState(null, '', newUrl);
+
+    modal.style.display = 'flex';
+};
+
+// 追加: Webサイト用モーダルを閉じる
+const closeWebsiteModal = () => {
+    const modal = document.getElementById('website-modal');
+    modal.style.display = 'none';
+
+    const params = new URLSearchParams(window.location.search);
+    params.delete('website');
+    const newUrl = params.toString()
+        ? `${window.location.pathname}?${params.toString()}`
+        : window.location.pathname;
+    history.replaceState(null, '', newUrl);
+};
+
 // お気に入り管理
 const FAVORITE_KEY = 'mouse_archive_favorites';
 const getFavorites = () => {
@@ -375,6 +450,8 @@ function updateModalFavorite(type, filename, description) {
         favBtn = document.getElementById('model-fav-btn');
     } else if (type === 'video') {
         favBtn = document.getElementById('video-fav-btn');
+    } else if (type === 'website') {
+        favBtn = document.getElementById('website-fav-btn');
     }
     if (!favBtn) return;
     favBtn.textContent = isFavorite(type, filename) ? '★お気に入り' : '☆お気に入り';
@@ -382,12 +459,12 @@ function updateModalFavorite(type, filename, description) {
     favBtn.onclick = () => toggleFavorite(type, filename, description);
 }
 
-// 画像・モデル・動画一覧を描画
+// 画像・モデル・動画一覧を描画（url を優先して使うように変更）
 const renderItems = items => {
     const container = document.getElementById('imgContainer');
     container.innerHTML = '';
 
-    items.forEach(({ type, filename, description, thumbnail, detail, author, tags }) => {
+    items.forEach(({ type, filename, description, thumbnail, detail, author, tags, url }) => {
         const div = document.createElement('div');
         div.className = 'img-item';
         div.style.display = 'inline-block';
@@ -397,8 +474,9 @@ const renderItems = items => {
         div.style.width = '200px';
 
         if (type === 'image') {
+            const src = url || `imgs/${filename}`;
             const img = document.createElement('img');
-            img.src = `imgs/${filename}`;
+            img.src = src;
             img.alt = description || filename;
             img.loading = 'lazy';
             img.style.width = '200px';
@@ -435,11 +513,21 @@ const renderItems = items => {
             div.appendChild(tagDiv);
 
             div.addEventListener('click', () => {
-                openImageModal(filename, description, detail, author, tags);
+                openImageModal(filename, description, detail, author, tags, url);
             });
         } else if (type === 'model') {
+            // サムネイル URL: 外部URLなら thumbnail をそのまま使用、ローカルなら /thumbnails/{filename}.webp
+            let src;
+            if (url && url.startsWith('http')) {
+                // 外部URL の場合: thumbnail フィールドがあればそれを使用
+                src = thumbnail || url.replace(/\.[^.]+$/, '.webp');
+            } else {
+                // ローカルパスの場合: /thumbnails/{filename}.webp
+                src = thumbnail ? `${location.origin}/thumbnails/${thumbnail}` : `${location.origin}/thumbnails/${filename.replace(/\.[^.]+$/, '.webp')}`;
+            }
+
             const img = document.createElement('img');
-            img.src = `thumbnails/${thumbnail || filename.replace(/\.[^.]+$/, '.webp')}`;
+            img.src = src;
             img.alt = description || filename;
             img.loading = 'lazy';
             img.style.width = '200px';
@@ -476,11 +564,12 @@ const renderItems = items => {
             div.appendChild(tagDiv);
 
             div.addEventListener('click', () => {
-                openModelModal(filename, description, detail, author, tags);
+                openModelModal(filename, description, detail, author, tags, url);
             });
         } else if (type === 'video') {
+            const src = url || `videos/${filename}`;
             const video = document.createElement('video');
-            video.src = `videos/${filename}`;
+            video.src = src;
             video.alt = description || filename;
             video.style.width = '200px';
             video.style.height = '200px';
@@ -520,8 +609,127 @@ const renderItems = items => {
             div.appendChild(tagDiv);
 
             div.addEventListener('click', () => {
-                openVideoModal(filename, description, detail, author, tags);
+                openVideoModal(filename, description, detail, author, tags, url);
             });
+        } else if (type === 'audio') {
+            // 新規: audio タイプの表示
+            const src = url || `videos/${filename}`;
+            const audio = document.createElement('audio');
+            audio.src = src;
+            audio.controls = true;
+            audio.style.width = '200px';
+            audio.style.height = '40px';
+            div.appendChild(audio);
+
+            const cap = document.createElement('p');
+            cap.textContent = description || filename;
+            div.appendChild(cap);
+
+            // detail / author / tags（既存と同様）
+            const det = document.createElement('div');
+            det.className = 'item-detail';
+            det.textContent = detail || '';
+            det.style.fontSize = '0.9em';
+            det.style.color = '#666';
+            det.style.marginTop = '4px';
+            div.appendChild(det);
+
+            const aut = document.createElement('div');
+            aut.className = 'item-author';
+            aut.textContent = author ? `by ${author}` : '';
+            aut.style.fontSize = '0.8em';
+            aut.style.color = '#999';
+            aut.style.marginTop = '2px';
+            div.appendChild(aut);
+
+            const tagDiv = document.createElement('div');
+            tagDiv.className = 'item-tags';
+            tagDiv.style.marginTop = '4px';
+            tagDiv.innerHTML = renderTags(tags);
+            div.appendChild(tagDiv);
+
+            div.addEventListener('click', () => {
+                // audio は専用モーダル未実装のため、再生を優先 or 外部リンク表示
+                if (url) {
+                    window.open(url, '_blank', 'noopener');
+                }
+            });
+        } else if (type === 'website') {
+            // Webサイト表示（モーダル式）
+            const src = thumbnail || `${location.origin}/imgs/web-icon.webp`;
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = description || filename;
+            img.loading = 'lazy';
+            img.style.width = '200px';
+            img.style.height = '200px';
+            img.style.objectFit = 'contain';
+
+            const cap = document.createElement('p');
+            cap.textContent = description || filename;
+            div.append(img, cap);
+
+            // detail表示
+            const det = document.createElement('div');
+            det.className = 'item-detail';
+            det.textContent = detail || '';
+            det.style.fontSize = '0.9em';
+            det.style.color = '#666';
+            det.style.marginTop = '4px';
+            div.appendChild(det);
+
+            // author表示
+            const aut = document.createElement('div');
+            aut.className = 'item-author';
+            aut.textContent = author ? `by ${author}` : '';
+            aut.style.fontSize = '0.8em';
+            aut.style.color = '#999';
+            aut.style.marginTop = '2px';
+            div.appendChild(aut);
+
+            // タグ表示
+            const tagDiv = document.createElement('div');
+            tagDiv.className = 'item-tags';
+            tagDiv.style.marginTop = '4px';
+            tagDiv.innerHTML = renderTags(tags);
+            div.appendChild(tagDiv);
+
+            div.addEventListener('click', () => {
+                // Webサイトはモーダルで表示
+                openWebsiteModal(filename, description, detail, author, tags, url, thumbnail);
+            });
+        } else {
+            // その他ファイル: リンク表示
+            const link = document.createElement('a');
+            link.href = url || (`files/${filename}`);
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = description || filename;
+            link.style.display = 'block';
+            link.style.marginTop = '20px';
+            div.appendChild(link);
+
+            const det = document.createElement('div');
+            det.className = 'item-detail';
+            det.textContent = detail || '';
+            det.style.fontSize = '0.9em';
+            det.style.color = '#666';
+            det.style.marginTop = '4px';
+            div.appendChild(det);
+
+            const aut = document.createElement('div');
+            aut.className = 'item-author';
+            aut.textContent = author ? `by ${author}` : '';
+            aut.style.fontSize = '0.8em';
+            aut.style.color = '#999';
+            aut.style.marginTop = '2px';
+            div.appendChild(aut);
+
+            const tagDiv = document.createElement('div');
+            tagDiv.className = 'item-tags';
+            tagDiv.style.marginTop = '4px';
+            tagDiv.innerHTML = renderTags(tags);
+            div.appendChild(tagDiv);
         }
 
         container.appendChild(div);
@@ -583,19 +791,430 @@ const loadVideos = async () => {
     }
 };
 
-const restoreSearchFromURL = () => {
-    const query = getQueryParam('q');
-    const allItems = [...allImages, ...allModels, ...allVideos];
-    if (query) {
-        searchInput.value = query;
-        searchInput.dispatchEvent(new Event('input'));
-    } else {
-        showResultCount(allItems.length);
-        renderItems(allItems);
-    }
-};
+// --- 追加: Firebase 初期化・Firestore 読み出し / URL追加処理 ---
+let firebaseAvailable = false;
+let firestore = null;
+let auth = null;
+let currentUser = null;
+let currentIsAdmin = false;
 
-const restoreModalFromURL = () => {
+function initFirebaseIfConfigured() {
+    // window.FIREBASE_CONFIG を index.html にセットしてください
+    if (window.FIREBASE_CONFIG && typeof firebase !== 'undefined') {
+        try {
+            firebase.initializeApp(window.FIREBASE_CONFIG);
+            firestore = firebase.firestore();
+            auth = firebase.auth();
+            firebaseAvailable = true;
+            console.log('Firebase 初期化済み');
+
+            // 認証状態監視
+            auth.onAuthStateChanged(async (user) => {
+                currentUser = user;
+                const signInBtn = document.getElementById('signInBtn');
+                const signOutBtn = document.getElementById('signOutBtn');
+                const userInfo = document.getElementById('userInfo');
+                const adminBadge = document.getElementById('adminBadge');
+                const migrateLink = document.getElementById('migratePageLink');
+                if (user) {
+                    userInfo.textContent = user.displayName ? `${user.displayName} (${user.email})` : user.email;
+                    signInBtn.style.display = 'none';
+                    signOutBtn.style.display = 'inline-block';
+
+                    // 管理者判定: admins コレクションに doc id = uid が存在するか
+                    try {
+                        const doc = await firestore.collection('admins').doc(user.uid).get();
+                        currentIsAdmin = doc.exists;
+                    } catch (e) {
+                        console.error('admin 判定失敗', e);
+                        currentIsAdmin = false;
+                    }
+                    adminBadge.style.display = currentIsAdmin ? 'inline-block' : 'none';
+                    // 管理者なら移行ページリンクを表示
+                    if (migrateLink) migrateLink.style.display = currentIsAdmin ? 'inline-block' : 'none';
+                } else {
+                    // 未ログイン
+                    userInfo.textContent = '';
+                    signInBtn.style.display = 'inline-block';
+                    signOutBtn.style.display = 'none';
+                    adminBadge.style.display = 'none';
+                    currentIsAdmin = false;
+                }
+            });
+
+            // ログイン / ログアウトボタン動作
+            document.addEventListener('DOMContentLoaded', () => {
+                const signInBtn = document.getElementById('signInBtn');
+                const signOutBtn = document.getElementById('signOutBtn');
+                if (signInBtn) {
+                    signInBtn.addEventListener('click', async () => {
+                        const provider = new firebase.auth.GoogleAuthProvider();
+                        try {
+                            await auth.signInWithPopup(provider);
+                        } catch (e) {
+                            console.error('ログイン失敗', e);
+                            showToast('ログインに失敗しました', 1600, '#f66');
+                        }
+                    });
+                }
+                if (signOutBtn) {
+                    signOutBtn.addEventListener('click', async () => {
+                        try {
+                            await auth.signOut();
+                        } catch (e) {
+                            console.error('ログアウト失敗', e);
+                        }
+                    });
+                }
+            });
+
+        } catch (e) {
+            console.warn('Firebase 初期化エラー', e);
+            firebaseAvailable = false;
+        }
+    } else {
+        console.log('Firebase 未設定: フェールバックでローカルJSONを使用します');
+    }
+}
+
+// Firestore の 'archive' コレクションから読み出して配列に振り分ける
+async function loadFromFirestore() {
+    if (!firebaseAvailable || !firestore) return;
+    try {
+        const snapshot = await firestore.collection('archive').get();
+        const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        // リセット
+        allImages = [];
+        allModels = [];
+        allVideos = [];
+        // その他も保持したければ拡張
+        docs.forEach(item => {
+            const t = item.type || detectTypeFromFilename(item.filename || item.url || '');
+            const entry = { ...item, type: t };
+            if (t === 'image') allImages.push(entry);
+            else if (t === 'model') allModels.push(entry);
+            else if (t === 'video') allVideos.push(entry);
+            else {
+                // その他は images に混ぜる（UI上ではレンダリング分岐でハンドル）
+                allImages.push(entry);
+            }
+        });
+    } catch (e) {
+        console.error('Firestore 読み込み失敗', e);
+    }
+}
+
+// --- 追加: Firestore の archive をリアルタイム監視し、配列を更新して再描画する ---
+let archiveUnsubscribe = null;
+function handleArchiveDocs(docs) {
+    // docs: array of firestore docs or plain objects
+    // リセット
+    allImages = [];
+    allModels = [];
+    allVideos = [];
+
+    docs.forEach(item => {
+        // item may be a DocumentSnapshot or plain object depending on caller
+        const data = item.data ? item.data() : item;
+        const filename = data.filename || '';
+        const t = data.type || detectTypeFromFilename(filename || data.url || '');
+        const entry = { ...data, type: t };
+        if (t === 'image') allImages.push(entry);
+        else if (t === 'model') allModels.push(entry);
+        else if (t === 'video') allVideos.push(entry);
+        else allImages.push(entry);
+    });
+    // 現在の検索条件を再適用（表示更新）
+    searchInput.dispatchEvent(new Event('input'));
+}
+
+// Firestore の archive を購読（リアルタイム反映）
+function subscribeArchiveRealtime() {
+    if (!firebaseAvailable || !firestore) return;
+    // 既存の購読を解除
+    if (archiveUnsubscribe) {
+        try { archiveUnsubscribe(); } catch (e) { /* ignore */ }
+        archiveUnsubscribe = null;
+    }
+    archiveUnsubscribe = firestore.collection('archive').onSnapshot(snapshot => {
+        const docs = snapshot.docs;
+        handleArchiveDocs(docs);
+    }, err => {
+        console.warn('archive onSnapshot error', err);
+    });
+}
+
+// GitHub からのロード処理
+async function loadFromGithubRaw() {
+    const msgEl = document.getElementById('ghMsg') || { textContent: '' };
+    msgEl.textContent = 'GitHub から読み込み中...';
+
+    try {
+        const urls = [
+            { path: '/imgindex.json', type: 'image', baseUrl: `${location.origin}/imgs/` },
+            { path: '/modelindex.json', type: 'model', baseUrl: `${location.origin}/models/` },
+            { path: '/videoindex.json', type: 'video', baseUrl: `${location.origin}/videos/` }
+        ];
+
+        for (const { path, type, baseUrl } of urls) {
+            try {
+                const { json: arr } = await ghGetJsonFile(path);
+                if (!Array.isArray(arr)) continue;
+
+                for (const item of arr) {
+                    const filename = item.filename || item.name || '';
+                    const url = item.url || (filename ? (baseUrl + filename) : (item.url || ''));
+                    // 重複チェック（filename ベース）
+                    const exists = type === 'image' ? allImages.some(i => i.filename === filename) :
+                        type === 'model' ? allModels.some(m => m.filename === filename) :
+                            type === 'video' ? allVideos.some(v => v.filename === filename) : false;
+                    if (exists) {
+                        if (msgEl) msgEl.textContent = `スキップ: ${filename}`;
+                        await delay(150); // 軽い待ち
+                        continue;
+                    }
+
+                    const doc = {
+                        filename,
+                        url,
+                        description: item.description || item.title || filename,
+                        detail: item.detail || '',
+                        // 追加: サムネイルを含める
+                        thumbnail: item.thumbnail || '',
+                        author: item.author || '',
+                        tags: Array.isArray(item.tags) ? item.tags : [],
+                        type,
+                        owner: currentUser ? currentUser.uid : 'guest',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    if (firebaseAvailable && firestore) {
+                        // Firestore に追加
+                        const newDocRef = await firestore.collection('archive').add(doc);
+                        // 非同期で contentHash を計算して更新（CORS 等で失敗してもログを出して無視）
+                        (async () => {
+                            try {
+                                if (doc.url) {
+                                    const h = await computeContentHash(doc.url);
+                                    if (h) await firestore.collection('archive').doc(newDocRef.id).update({ contentHash: h });
+                                }
+                            } catch (e) {
+                                console.warn('contentHash update failed', e);
+                            }
+                        })();
+                    } else {
+                        // ローカルに追加
+                        if (type === 'image') allImages.unshift(doc);
+                        else if (type === 'model') allModels.unshift(doc);
+                        else if (type === 'video') allVideos.unshift(doc);
+                        else allImages.unshift(doc);
+                    }
+                    if (msgEl) msgEl.textContent = `追加中: ${filename}`;
+                    await delay(200); // 書き込み間隔を空ける
+                }
+            } catch (e) {
+                console.warn('GitHub ロードエラー', path, e);
+            }
+        }
+
+        if (msgEl) msgEl.textContent = 'GitHub からの読み込み完了';
+        showToast('GitHub からのデータ読み込みが完了しました', 3000, '#4caf50');
+        // 再読み込み
+        await loadFromFirestore();
+        searchInput.dispatchEvent(new Event('input'));
+    } catch (e) {
+        console.error('GitHub 読み込み失敗', e);
+        if (msgEl) msgEl.textContent = 'GitHub からの読み込みに失敗しました';
+        showToast('GitHub からの読み込みに失敗しました', 3000, '#f66');
+    }
+}
+
+// --- 追加: JSON を Firestore に移行する処理 ---
+async function migrateJsonToFirestore() {
+    const msgEl = document.getElementById('migrateMsg');
+    if (!firebaseAvailable || !firestore) {
+        msgEl.textContent = 'Firebase が未設定です';
+        return;
+    }
+    if (!auth || !currentUser || !currentIsAdmin) {
+        msgEl.textContent = '管理者でログインしてください';
+        return;
+    }
+    if (!confirm('ローカルの JSON を Firestore に移行します。既に存在する URL はスキップされます。よろしいですか？')) return;
+
+    msgEl.textContent = '移行を開始します...';
+    try {
+        const lists = [
+            { path: '/imgindex.json', type: 'image', baseUrl: `${location.origin}/imgs/` },
+            { path: '/modelindex.json', type: 'model', baseUrl: `${location.origin}/models/` },
+            { path: '/videoindex.json', type: 'video', baseUrl: `${location.origin}/videos/` }
+        ];
+
+        let total = 0, added = 0, skipped = 0;
+
+        for (const listInfo of lists) {
+            try {
+                const res = await fetch(listInfo.path);
+                if (!res.ok) continue;
+                const arr = await res.json();
+                if (!Array.isArray(arr)) continue;
+
+                for (const item of arr) {
+                    total++;
+                    const filename = item.filename || item.name || '';
+                    const url = item.url || (filename ? (listInfo.baseUrl + filename) : (item.url || ''));
+                    // 変更: 重複確認を URL ベースに変更
+                    const q = await firestore.collection('archive').where('url', '==', url).get();
+                    if (!q.empty) {
+                        skipped++;
+                        msgEl.textContent = `スキップ: ${url}`;
+                        await delay(150);
+                        continue;
+                    }
+
+                    const doc = {
+                        filename,
+                        url,
+                        description: item.description || item.title || filename,
+                        detail: item.detail || '',
+                        thumbnail: item.thumbnail || '',
+                        author: item.author || '',
+                        tags: Array.isArray(item.tags) ? item.tags : [],
+                        type: listInfo.type,
+                        owner: currentUser.uid,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    await firestore.collection('archive').add(doc);
+                    (async () => {
+                        try {
+                            if (doc.url) {
+                                const h = await computeContentHash(doc.url);
+                                if (h) await firestore.collection('archive').doc(newDocRef.id).update({ contentHash: h });
+                            }
+                        } catch (e) {
+                            console.warn('contentHash update failed', e);
+                        }
+                    })();
+                    added++;
+                    msgEl.textContent = `追加中: ${filename} (${added} 追加, ${skipped} スキップ)`;
+                    await delay(200);
+                }
+            } catch (e) {
+                console.warn('移行エラー', listInfo.path, e);
+            }
+        }
+
+        msgEl.textContent = `移行完了: 合計 ${total} 件中 ${added} 件追加, ${skipped} 件スキップしました`;
+        showToast('JSON → Firestore 移行が完了しました', 3000, '#4caf50');
+        await loadFromFirestore();
+        searchInput.dispatchEvent(new Event('input'));
+    } catch (e) {
+        console.error('移行失敗', e);
+        msgEl.textContent = '移行に失敗しました';
+        showToast('移行に失敗しました', 3000, '#f66');
+    }
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/* ===== GitHub API ユーティリティ (client-side) =====
+   注意: PAT をクライアントに置くのはセキュリティリスクがあります。自己責任で使用してください。 */
+let ghConfig = { owner: '', repo: '', branch: 'main', token: '' };
+
+function ghSetFromUI() {
+    const owner = document.getElementById('ghOwner')?.value?.trim() || '';
+    const repo = document.getElementById('ghRepo')?.value?.trim() || '';
+    const branch = document.getElementById('ghBranch')?.value?.trim() || 'main';
+    const token = document.getElementById('ghToken')?.value?.trim() || '';
+    ghConfig = { owner, repo, branch, token };
+}
+
+async function ghApi(path, method = 'GET', body = null) {
+    if (!ghConfig.token) throw new Error('GitHub token not set');
+    const url = `https://api.github.com/repos/${encodeURIComponent(ghConfig.owner)}/${encodeURIComponent(ghConfig.repo)}/contents/${path}`;
+    const headers = {
+        'Authorization': 'token ' + ghConfig.token,
+        'Accept': 'application/vnd.github.v3+json'
+    };
+    const opt = { method, headers };
+    if (body) opt.body = JSON.stringify(body);
+    const res = await fetch(url, opt);
+    if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`ghApi ${res.status} ${res.statusText}: ${txt}`);
+    }
+    return await res.json();
+}
+
+async function ghGetJsonFile(path) {
+    const res = await ghApi(path, 'GET');
+    if (!res || !res.content) throw new Error('file not found');
+    const decoded = atob(res.content.replace(/\n/g, ''));
+    return { json: JSON.parse(decoded), sha: res.sha };
+}
+
+async function ghPutJsonFile(path, newObj, message, sha) {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(newObj, null, 2))));
+    const body = {
+        message: message || `Update ${path}`,
+        content,
+        branch: ghConfig.branch
+    };
+    if (sha) body.sha = sha;
+    return await ghApi(path, 'PUT', body);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const ghConnectBtn = document.getElementById('ghConnectBtn');
+    const ghSyncBtn = document.getElementById('ghSyncBtn');
+    const ghMsg = document.getElementById('ghMsg');
+    if (ghConnectBtn) {
+        ghConnectBtn.addEventListener('click', async () => {
+            ghSetFromUI();
+            ghMsg.textContent = '接続中...';
+            try {
+                await ghApi('', 'GET');
+                ghMsg.textContent = '接続成功！';
+                showToast('GitHub 接続に成功しました', 2000, '#4caf50');
+            } catch (e) {
+                ghMsg.textContent = '接続失敗';
+                console.error('GitHub 接続エラー', e);
+                showToast('GitHub 接続に失敗しました', 2000, '#f66');
+            }
+        });
+    }
+    if (ghSyncBtn) {
+        ghSyncBtn.addEventListener('click', async () => {
+            ghMsg.textContent = '同期中...';
+            try {
+                allImages = [];
+                allModels = [];
+                allVideos = [];
+                await loadFromFirestore();
+                await Promise.all([loadImages(), loadModels(), loadVideos()]);
+                ghMsg.textContent = '同期完了';
+                showToast('データの同期が完了しました', 2000, '#4caf50');
+            } catch (e) {
+                ghMsg.textContent = '同期失敗';
+                console.error('データ同期エラー', e);
+                showToast('データの同期に失敗しました', 2000, '#f66');
+            }
+        });
+    }
+});
+
+function restoreSearchFromURL() {
+    const q = getQueryParam('q');
+    if (q) {
+        searchInput.value = q;
+        searchInput.dispatchEvent(new Event('input'));
+    }
+}
+
+function restoreModalFromURL() {
     const img = getQueryParam('img');
     if (img && allImages.length) {
         const found = allImages.find(({ filename }) => filename === img);
@@ -605,11 +1224,9 @@ const restoreModalFromURL = () => {
                 found.description,
                 found.detail,
                 found.author,
-                found.tags || []
+                found.tags || [],
+                found.url
             );
-        } else {
-            error_window.style.display = 'flex';
-            document.getElementById('error-message').innerHTML = 'URLパラメーターに誤りがあります。';
         }
     }
     const model = getQueryParam('model');
@@ -621,11 +1238,9 @@ const restoreModalFromURL = () => {
                 foundModel.description,
                 foundModel.detail,
                 foundModel.author,
-                foundModel.tags || []
+                foundModel.tags || [],
+                foundModel.url
             );
-        } else {
-            error_window.style.display = 'flex';
-            document.getElementById('error-message').innerHTML = 'URLパラメーターに誤りがあります。';
         }
     }
     const video = getQueryParam('video');
@@ -637,15 +1252,90 @@ const restoreModalFromURL = () => {
                 foundVideo.description,
                 foundVideo.detail,
                 foundVideo.author,
-                foundVideo.tags || []
+                foundVideo.tags || [],
+                foundVideo.url
             );
-        } else {
-            error_window.style.display = 'flex';
-            document.getElementById('error-message').innerHTML = 'URLパラメーターに誤りがあります。';
         }
     }
-};
-// エラーメッセージウィンドウを閉じる
+    const website = getQueryParam('website');
+    if (website && allImages.length) {
+        const found = allImages.find(({ filename }) => filename === website);
+        if (found && found.type === 'website') {
+            openWebsiteModal(
+                found.filename,
+                found.description,
+                found.detail,
+                found.author,
+                found.tags || [],
+                found.url,
+                found.thumbnail
+            );
+        }
+    }
+}
+
+async function loadFirebaseConfigFromJson() {
+    try {
+        if (!window.FIREBASE_CONFIG) {
+            const res = await fetch('/firestore.json', { cache: 'no-store' });
+            if (res.ok) {
+                const cfg = await res.json();
+                if (cfg && cfg.projectId) {
+                    window.FIREBASE_CONFIG = cfg;
+                    console.log('FIREBASE_CONFIG loaded from /firestore.json');
+                } else {
+                    console.warn('firestore.json の内容が不正です');
+                }
+            } else {
+                console.info('/firestore.json が見つかりません:', res.status);
+            }
+        }
+    } catch (e) {
+        console.warn('firestore.json の読み込みに失敗しました', e);
+    }
+}
+
+function detectTypeFromFilename(filename) {
+    const ext = (filename.split('.').pop() || '').toLowerCase();
+    if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext)) return 'image';
+    if (['mp4', 'webm', 'mov', 'mkv'].includes(ext)) return 'video';
+    if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) return 'audio';
+    if (['glb', 'gltf', 'obj', 'fbx', 'dae'].includes(ext)) return 'model';
+    return 'other';
+}
+
+async function computeContentHash(url) {
+    try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) return null;
+        const buf = await res.arrayBuffer();
+        const hbuf = await crypto.subtle.digest('SHA-1', buf);
+        const arr = Array.from(new Uint8Array(hbuf));
+        return arr.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) {
+        console.warn('computeContentHash error', e);
+        return null;
+    }
+}
+
+(async () => {
+    await loadFirebaseConfigFromJson();
+    initFirebaseIfConfigured();
+
+    if (firebaseAvailable) {
+        await loadFromFirestore();
+        subscribeArchiveRealtime();
+    } else {
+        if (ghConfig.token && ghConfig.owner && ghConfig.repo) {
+            await loadFromGithubRaw();
+        }
+        await Promise.all([loadImages(), loadModels(), loadVideos()]);
+    }
+
+    restoreSearchFromURL();
+    restoreModalFromURL();
+})();
+
 errorCloseBtn.addEventListener('click', () => {
     error_window.style.display = 'none';
 });
@@ -653,68 +1343,124 @@ error_window.addEventListener('click', e => {
     if (e.target === error_window) error_window.style.display = 'none';
 });
 
-// 画像モーダルのselectで画像形式切り替え対応チュー
 const imgTypeSelect = document.querySelector('select[name="img-type"]');
-imgTypeSelect.addEventListener('change', () => {
-    const selectedType = imgTypeSelect.value.toLowerCase(); // 'webp' or 'png'
-    const modalImg = document.getElementById('modal-img');
-    const downloadBtn = document.getElementById('download-btn');
-    const copyBtn = document.getElementById('img-copy-btn');
+if (imgTypeSelect) {
+    imgTypeSelect.addEventListener('change', () => {
+        const selectedType = imgTypeSelect.value.toLowerCase();
+        const modalImg = document.getElementById('modal-img');
+        const downloadBtn = document.getElementById('download-btn');
+        const copyBtn = document.getElementById('img-copy-btn');
 
-    const currentFilename = downloadBtn.download || modalImg.alt || '';
-    if (!currentFilename) return;
+        const currentFilename = downloadBtn.download || modalImg.alt || '';
+        if (!currentFilename) return;
 
-    const baseName = currentFilename.replace(/\.[^.]+$/, '');
-    const newFilename = `${baseName}.${selectedType}`;
-    const newUrl = `${location.origin}/imgs/${newFilename}`;
+        const baseName = currentFilename.replace(/\.[^.]+$/, '');
+        const newFilename = `${baseName}.${selectedType}`;
+        const newUrl = `${location.origin}/imgs/${newFilename}`;
 
-    modalImg.src = newUrl;
-    modalImg.alt = newFilename;
+        modalImg.src = newUrl;
+        modalImg.alt = newFilename;
 
-    downloadBtn.href = newUrl;
-    downloadBtn.download = newFilename;
+        downloadBtn.href = newUrl;
+        downloadBtn.download = newFilename;
 
-    copyBtn.dataset.url = newUrl;
-});
+        copyBtn.dataset.url = newUrl;
+    });
+}
 
-// コピーURLボタン
-document.getElementById('img-copy-btn').addEventListener('click', () => {
-    const url = document.getElementById('img-copy-btn').dataset.url;
-    navigator.clipboard.writeText(url)
-        .then(() => showToast('コピーしましたチュー！'))
-        .catch(() => showToast('コピーに失敗したチュー…'));
-});
-document.getElementById('model-copy-btn').addEventListener('click', () => {
-    const url = document.getElementById('model-copy-btn').dataset.url;
-    navigator.clipboard.writeText(url)
-        .then(() => showToast('コピーしましたチュー！'))
-        .catch(() => showToast('コピーに失敗したチュー…'));
-});
-document.getElementById('video-copy-btn').addEventListener('click', () => {
-    const url = document.getElementById('video-copy-btn').dataset.url;
-    navigator.clipboard.writeText(url)
-        .then(() => showToast('コピーしましたチュー！'))
-        .catch(() => showToast('コピーに失敗したチュー…'));
-});
+const imgCopyBtn = document.getElementById('img-copy-btn');
+if (imgCopyBtn) {
+    imgCopyBtn.addEventListener('click', () => {
+        const url = document.getElementById('img-copy-btn').dataset.url;
+        navigator.clipboard.writeText(url)
+            .then(() => showToast('コピーしましたチュー！'))
+            .catch(() => showToast('コピーに失敗したチュー…'));
+    });
+}
 
-// モーダル閉じるボタン
-document.getElementById('modal-close').addEventListener('click', closeImageModal);
-document.getElementById('modal').addEventListener('click', e => {
-    if (e.target.id === 'modal') closeImageModal();
-});
-document.getElementById('model-close').addEventListener('click', closeModelModal);
-document.getElementById('model-modal').addEventListener('click', e => {
-    if (e.target.id === 'model-modal') closeModelModal();
-});
-document.getElementById('video-close').addEventListener('click', closeVideoModal);
-document.getElementById('video-modal').addEventListener('click', e => {
-    if (e.target.id === 'video-modal') closeVideoModal();
-});
+const modelCopyBtn = document.getElementById('model-copy-btn');
+if (modelCopyBtn) {
+    modelCopyBtn.addEventListener('click', () => {
+        const url = document.getElementById('model-copy-btn').dataset.url;
+        navigator.clipboard.writeText(url)
+            .then(() => showToast('コピーしましたチュー！'))
+            .catch(() => showToast('コピーに失敗したチュー…'));
+    });
+}
 
-// 検索機能
-searchInput.addEventListener('input', e => {
-    searchAndFilter();
-});
+const videoCopyBtn = document.getElementById('video-copy-btn');
+if (videoCopyBtn) {
+    videoCopyBtn.addEventListener('click', () => {
+        const url = document.getElementById('video-copy-btn').dataset.url;
+        navigator.clipboard.writeText(url)
+            .then(() => showToast('コピーしましたチュー！'))
+            .catch(() => showToast('コピーに失敗したチュー…'));
+    });
+}
+
+const websiteCopyBtn = document.getElementById('website-copy-btn');
+if (websiteCopyBtn) {
+    websiteCopyBtn.addEventListener('click', () => {
+        const url = document.getElementById('website-copy-btn').dataset.url;
+        navigator.clipboard.writeText(url)
+            .then(() => showToast('URLをコピーしましたチュー！'))
+            .catch(() => showToast('コピーに失敗したチュー…'));
+    });
+}
+
+const modalClose = document.getElementById('modal-close');
+if (modalClose) {
+    modalClose.addEventListener('click', closeImageModal);
+}
+
+const modal = document.getElementById('modal');
+if (modal) {
+    modal.addEventListener('click', e => {
+        if (e.target.id === 'modal') closeImageModal();
+    });
+}
+
+const modelClose = document.getElementById('model-close');
+if (modelClose) {
+    modelClose.addEventListener('click', closeModelModal);
+}
+
+const modelModal = document.getElementById('model-modal');
+if (modelModal) {
+    modelModal.addEventListener('click', e => {
+        if (e.target.id === 'model-modal') closeModelModal();
+    });
+}
+
+const videoClose = document.getElementById('video-close');
+if (videoClose) {
+    videoClose.addEventListener('click', closeVideoModal);
+}
+
+const videoModal = document.getElementById('video-modal');
+if (videoModal) {
+    videoModal.addEventListener('click', e => {
+        if (e.target.id === 'video-modal') closeVideoModal();
+    });
+}
+
+const websiteClose = document.getElementById('website-close');
+if (websiteClose) {
+    websiteClose.addEventListener('click', closeWebsiteModal);
+}
+
+const websiteModal = document.getElementById('website-modal');
+if (websiteModal) {
+    websiteModal.addEventListener('click', e => {
+        if (e.target.id === 'website-modal') closeWebsiteModal();
+    });
+}
+
+if (searchInput) {
+    searchInput.addEventListener('input', e => {
+        searchAndFilter();
+    });
+}
 
 const searchAndFilter = () => {
     const rawInput = searchInput.value.trim();
@@ -730,16 +1476,15 @@ const searchAndFilter = () => {
     }
 
     let filtered = [];
-    // タイプ検索対応
     if (input === '@動画') {
         filtered = allItems.filter(item => item.type === 'video');
     } else if (input === '@画像') {
         filtered = allItems.filter(item => item.type === 'image');
     } else if (input === '@3d' || input === '@３ｄ') {
         filtered = allItems.filter(item => item.type === 'model');
-    }
-    // タグ検索対応
-    else if (input.startsWith('#')) {
+    } else if (input === '@web' || input === '@website' || input === '@サイト') {
+        filtered = allItems.filter(item => item.type === 'website');
+    } else if (input.startsWith('#')) {
         const tagKey = input;
         filtered = allItems.filter(({ tags, detail }) =>
             (Array.isArray(tags) && tags.some(t => normalizeText(t) === normalizeText(tagKey))) ||
@@ -775,43 +1520,40 @@ const searchAndFilter = () => {
     }
 }
 
-// タイトルクリックでリセット
-document.getElementById("main-title").addEventListener("click", () => {
-    searchInput.value = '';
-    searchInput.dispatchEvent(new Event('input'));
-    setQueryParam('q', '');
-    closeImageModal();
-    closeModelModal();
-    closeVideoModal();
-    history.replaceState(null, '', window.location.pathname);
-});
+const mainTitle = document.getElementById("main-title");
+if (mainTitle) {
+    mainTitle.addEventListener("click", () => {
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+        setQueryParam('q', '');
+        closeImageModal();
+        closeModelModal();
+        closeVideoModal();
+        history.replaceState(null, '', window.location.pathname);
+    });
+}
 
-// 最後に全部ロードチュー
-Promise.all([loadImages(), loadModels(), loadVideos()]).then(() => {
-    restoreSearchFromURL();
-    restoreModalFromURL();
-});
-Promise.all([loadImages(), loadModels(), loadVideos()]).then(() => {
-    restoreSearchFromURL();
-    restoreModalFromURL();
-});
-
-// お気に入り一覧表示
 const showFavoritesBtn = document.getElementById('show-favorites-btn');
 const favoritesModal = document.getElementById('favorites-modal');
 const favoritesCloseBtn = document.getElementById('favorites-close');
 const favoritesListDiv = document.getElementById('favorites-list');
 
-showFavoritesBtn.addEventListener('click', () => {
-    renderFavoritesList();
-    favoritesModal.style.display = 'flex';
-});
-favoritesCloseBtn.addEventListener('click', () => {
-    favoritesModal.style.display = 'none';
-});
-favoritesModal.addEventListener('click', e => {
-    if (e.target === favoritesModal) favoritesModal.style.display = 'none';
-});
+if (showFavoritesBtn) {
+    showFavoritesBtn.addEventListener('click', () => {
+        renderFavoritesList();
+        favoritesModal.style.display = 'flex';
+    });
+}
+if (favoritesCloseBtn) {
+    favoritesCloseBtn.addEventListener('click', () => {
+        favoritesModal.style.display = 'none';
+    });
+}
+if (favoritesModal) {
+    favoritesModal.addEventListener('click', e => {
+        if (e.target === favoritesModal) favoritesModal.style.display = 'none';
+    });
+}
 
 function renderFavoritesList() {
     const favs = getFavorites();
@@ -830,18 +1572,17 @@ function renderFavoritesList() {
     }).join('');
 }
 
-// お気に入り一覧から表示/削除用グローバル関数
 window._favOpen = (type, filename) => {
     favoritesModal.style.display = 'none';
     if (type === 'image') {
         const found = allImages.find(i => i.filename === filename);
-        if (found) openImageModal(found.filename, found.description, found.detail, found.author, found.tags || []);
+        if (found) openImageModal(found.filename, found.description, found.detail, found.author, found.tags || [], found.url);
     } else if (type === 'model') {
         const found = allModels.find(m => m.filename === filename);
-        if (found) openModelModal(found.filename, found.description, found.detail, found.author, found.tags || []);
+        if (found) openModelModal(found.filename, found.description, found.detail, found.author, found.tags || [], found.url);
     } else if (type === 'video') {
         const found = allVideos.find(v => v.filename === filename);
-        if (found) openVideoModal(found.filename, found.description, found.detail, found.author, found.tags || []);
+        if (found) openVideoModal(found.filename, found.description, found.detail, found.author, found.tags || [], found.url);
     }
 };
 window._favRemove = (type, filename) => {

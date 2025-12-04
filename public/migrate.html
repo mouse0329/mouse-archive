@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8" />
+    <title>JSON → Firestore 移行（管理者用）</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="index.css" />
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+</head>
+
+<body>
+    <h1 style="text-align:center; margin-top:20px;">JSON → Firestore 移行（管理者用）</h1>
+
+    <div style="text-align:center; margin:16px;">
+        <button id="signInBtn">Googleでログイン</button>
+        <button id="signOutBtn" style="display:none;">ログアウト</button>
+        <div id="userInfo" style="margin-top:8px;"></div>
+    </div>
+
+    <div style="text-align:center; margin:12px;">
+        <button id="startMigrateBtn" disabled>移行を開始する</button>
+        <a href="index.html" style="margin-left:12px;">サイトに戻る</a>
+    </div>
+
+    <div id="migrateStatus"
+        style="max-width:1000px; margin:16px auto; padding:12px; background:#fff; border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,0.06);">
+        <pre id="migrateLog" style="white-space:pre-wrap; word-break:break-word; margin:0; font-size:0.95em;"></pre>
+    </div>
+
+    <script src="migrate.js">
+        fetch('firestore.json')
+            .then(response => response.json())
+            .then(config => {
+                window.FIREBASE_CONFIG = {
+                    apiKey: config.apiKey,
+                    authDomain: config.authDomain,
+                    projectId: config.projectId,
+                    storageBucket: config.storageBucket,
+                    messagingSenderId: config.messagingSenderId,
+                    appId: config.appId
+                };
+            })
+            .catch(error => {
+                console.error('Firebase 設定の読み込みに失敗しました:', error);
+            });
+    </script>
+</body>
+
+</html>

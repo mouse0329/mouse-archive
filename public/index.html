@@ -14,6 +14,10 @@
     <link rel="icon" href="imgs/mouse-archive.webp" type="image/webp" />
     <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
+    <!-- Firebase (compat) SDKs - 必要に応じてバージョン更新してください -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 </head>
 
 
@@ -24,6 +28,21 @@
         <input type="button" value="検索をクリア"
             onclick="document.getElementById('searchInput').value=''; document.getElementById('imgContainer').innerHTML=''; document.getElementById('resultCount').textContent='';searchAndFilter()" />
         <button id="show-favorites-btn" style="margin-left:8px;">お気に入り一覧</button>
+
+        <!-- 管理者による追加は管理画面（/admin.html）で行ってください -->
+        <span id="addUrlMsg" style="margin-left:8px; color:#1976d2;"></span>
+
+        <!-- 追加: 認証UI表示 -->
+        <div id="authControls" style="display:flex; align-items:center; margin-left:12px;">
+            <button id="signInBtn" style="margin-right:6px;">Googleでログイン</button>
+            <button id="signOutBtn" style="margin-right:6px; display:none;">ログアウト</button>
+            <span id="userInfo" style="font-size:0.95em; color:#333;"></span>
+            <span id="adminBadge"
+                style="margin-left:8px; color:#fff; background:#1976d2; padding:2px 8px; border-radius:6px; display:none; font-weight:600;">管理者</span>
+        </div>
+
+        <!-- 管理者用: 移行ページへのリンク（JS で表示制御） -->
+        <a id="migratePageLink" href="migrate.html" style="margin-left:12px; display:none;">移行ページ（管理者用）</a>
     </div>
     <div id="resultCount" style="margin-bottom: 10px; font-weight: bold;"></div>
 
@@ -98,6 +117,29 @@
         </div>
     </div>
 
+    <!-- Webサイト用モーダル -->
+    <div id="website-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1000;">
+        <div
+            style="position:relative; background:#fff; border-radius:12px; padding:20px; max-width:90vw; max-height:90vh; overflow:auto;">
+            <button id="website-close" style="position:absolute; top:10px; right:10px;">✖</button>
+            <img id="website-img" src="" alt=""
+                style="max-width:100%; height:auto; max-height:300px; border-radius:8px; margin-bottom:12px;">
+            <h2 id="website-caption" style="margin:12px 0;"></h2>
+            <div id="website-detail" style="display:none; color:#666; font-size:0.9em; margin:8px 0; line-height:1.6;">
+            </div>
+            <div id="website-author" style="display:none; color:#999; font-size:0.8em; margin:8px 0;"></div>
+            <div id="website-tags" style="display:none; margin:8px 0; font-size:0.95em;"></div>
+            <button id="website-fav-btn"
+                style="margin:12px 0; border:none; border-radius:6px; padding:6px 16px; cursor:pointer;"></button>
+            <a id="website-link-btn" href="" target="_blank" rel="noopener"
+                style="display:inline-block; margin-left:8px; padding:6px 16px; background:#1976d2; color:#fff; border-radius:6px; text-decoration:none;">
+                サイトを開く
+            </a>
+            <button id="website-copy-btn" style="margin-left:8px; padding:6px 16px;">URLをコピー</button>
+        </div>
+    </div>
+
     <!-- お気に入りリストモーダル -->
     <div id="favorites-modal"
         style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:10000;">
@@ -169,6 +211,21 @@
                 }
             });
         });
+        fetch('firestore.json')
+            .then(response => response.json())
+            .then(config => {
+                window.FIREBASE_CONFIG = {
+                    apiKey: config.apiKey,
+                    authDomain: config.authDomain,
+                    projectId: config.projectId,
+                    storageBucket: config.storageBucket,
+                    messagingSenderId: config.messagingSenderId,
+                    appId: config.appId
+                };
+            })
+            .catch(error => {
+                console.error('Firebase 設定の読み込みに失敗しました:', error);
+            });
     </script>
 
 

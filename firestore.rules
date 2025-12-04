@@ -1,9 +1,76 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // --- archive コレクション ---
+    // 誰でも読み取り可能。作成は admins コレクションに登録されたユーザーのみ。
+    // 更新・削除はドキュメントの owner（UID）と一致するユーザー、または管理者。
+    match /archive/{docId} {
+      allow read: if true;
+
+      allow create: if isSignedIn() && isAdmin() && isValidArchiveOnCreate();
+      allow update: if isSignedIn() && (isOwner() || isAdmin()) && isValidArchiveOnUpdate();
+      allow delete: if isSignedIn() && (isOwner() || isAdmin());
+    }
+
+    // --- admins コレクション ---
+    // 管理者一覧はコンソール等で管理する想定。読み取りは署名ユーザーのみ許可（内部確認用）
+    match /admins/{adminId} {
+      allow read: if isSignedIn() && request.auth.uid == adminId || isAdmin();
+      allow write: if false; // 管理者登録はコンソールや管理用バックエンドで行ってください
+    }
+
+    // --- users コレクション ---
+    // 各ユーザー自身のみ読み書き可能（プロフィール等を想定）
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // デフォルト拒否
     match /{document=**} {
       allow read, write: if false;
+    }
+
+    // --- ユーティリティ関数 ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner() {
+      return request.auth != null && resource.data.owner == request.auth.uid;
+    }
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isValidArchiveOnCreate() {
+      // 必須フィールドを確認し、型・長さを検証
+      return request.resource.data.keys().hasAll(['filename','url','description','type','tags','owner','createdAt'])
+        && request.resource.data.filename is string
+        && request.resource.data.url is string
+        && request.resource.data.description is string
+        && request.resource.data.type in ['image','video','model','audio','website','other']
+        && request.resource.data.tags is list
+        && request.resource.data.tags.size() <= 20
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.createdAt <= request.time
+        // thumbnail フィールドはオプション
+        && (!request.resource.data.keys().contains('thumbnail') || request.resource.data.thumbnail is string);
+    }
+
+    function isValidArchiveOnUpdate() {
+      // 更新時は owner と createdAt の不正変更を禁止し、型チェック
+      return request.resource.data.owner == resource.data.owner
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.filename is string
+        && request.resource.data.url is string
+        && request.resource.data.description is string
+        && request.resource.data.type in ['image','video','model','audio','website','other']
+        && request.resource.data.tags is list
+        && request.resource.data.tags.size() <= 20
+        // thumbnail フィールドはオプション
+        && (!request.resource.data.keys().contains('thumbnail') || request.resource.data.thumbnail is string);
     }
   }
 }

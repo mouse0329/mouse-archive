@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8" />
+    <title>管理者管理</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="index.css" />
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+</head>
+
+<body>
+    <h1>管理者管理ページ</h1>
+
+    <div style="text-align:center; margin:16px;">
+        <button id="signInBtn">Googleでログイン</button>
+        <button id="signOutBtn" style="display:none;">ログアウト</button>
+        <div id="userInfo" style="margin-top:8px;"></div>
+        <div id="adminStatus" style="margin-top:8px; color:#1976d2; font-weight:600;"></div>
+    </div>
+
+    <div style="max-width:600px; margin:24px auto; padding:16px; background:#f5f5f5; border-radius:8px;">
+        <h2>管理者を追加</h2>
+        <input id="adminUid" placeholder="ユーザー UID を入力"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <button id="addAdminBtn">管理者として追加</button>
+        <span id="addMsg" style="margin-left:8px; color:#1976d2;"></span>
+    </div>
+
+    <div style="max-width:600px; margin:24px auto; padding:16px; background:#f5f5f5; border-radius:8px;">
+        <h2>アーカイブにURLから追加</h2>
+        <input id="archiveUrlInput" placeholder="追加するファイルのURL"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <input id="archiveDescInput" placeholder="説明（例: ねずみの立体チュー）"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <input id="archiveAuthorInput" placeholder="著者（例: mouse0329）"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <input id="archiveTagsInput" placeholder="タグ（例: #ネズミ,#3D）"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <input id="archiveThumbnailInput" placeholder="サムネイルURL（model タイプの場合のみ）"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <button id="addArchiveBtn">アーカイブに追加</button>
+        <span id="addArchiveMsg" style="margin-left:8px; color:#1976d2;"></span>
+    </div>
+
+    <div style="max-width:600px; margin:24px auto; padding:16px; background:#f5f5f5; border-radius:8px;">
+        <h2>Webサイトを追加</h2>
+        <input id="websiteUrlInput" placeholder="Webサイトの URL"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <input id="websiteTitleInput" placeholder="サイトタイトル（例: ネズミの家）"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <input id="websiteDescInput" placeholder="説明（例: ネズミに関する情報サイト）"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <input id="websiteAuthorInput" placeholder="著者（例: mouse0329）"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <input id="websiteTagsInput" placeholder="タグ（例: #ネズミ,#情報）"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <input id="websiteThumbnailInput" placeholder="OGP画像 URL（オプション）"
+            style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;" />
+        <button id="addWebsiteBtn">Webサイトを追加</button>
+        <span id="addWebsiteMsg" style="margin-left:8px; color:#1976d2;"></span>
+    </div>
+
+    <div style="max-width:600px; margin:24px auto; padding:16px; background:#f5f5f5; border-radius:8px;">
+        <h2>管理者一覧</h2>
+        <div id="adminList" style="border:1px solid #ccc; border-radius:8px; padding:12px; background:#fff;"></div>
+    </div>
+
+    <div style="max-width:600px; margin:24px auto; padding:16px; background:#f5f5f5; border-radius:8px;">
+        <h2>アーカイブ管理</h2>
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+            <input id="archiveSearch" placeholder="検索: ファイル名 / 説明 / タグ"
+                style="flex:1; padding:8px; box-sizing:border-box;" />
+            <button id="archiveSearchClear">クリア</button>
+            <button id="toggleManageBtn" style="margin-left:8px; display:none;">管理モード: 非表示</button>
+        </div>
+        <div style="margin-bottom:8px;">
+            <span id="archiveMsg" style="color:#1976d2;"></span>
+        </div>
+        <div id="archiveList"
+            style="border:1px solid #ccc; border-radius:8px; padding:12px; background:#fff; max-height:360px; overflow:auto;">
+        </div>
+    </div>
+
+    <div style="max-width:600px; margin:24px auto; padding:16px; background:#f5f5f5; border-radius:8px;">
+        <h2>重複ファイル検出</h2>
+        <p>同一コンテンツ（SHA-1）かつ拡張子が同じものをまとめます。未計算のものは順次ハッシュを計算して Firestore に保存します。</p>
+        <button id="detectDuplicatesBtn">重複を検出する</button>
+        <span id="detectMsg" style="margin-left:8px; color:#1976d2;"></span>
+        <div id="duplicateList" style="margin-top:12px;"></div>
+    </div>
+
+    <a href="index.html" style="text-align:center; display:block; margin-top:24px;">サイトに戻る</a>
+
+    <script src="admin.js"></script>
+</body>
+
+</html>
